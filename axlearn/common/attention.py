@@ -52,6 +52,7 @@ On `segment_ids`:
 import enum
 import functools
 import math
+import os
 from collections.abc import Sequence
 from enum import Enum, unique
 from typing import Any, Callable, Literal, NamedTuple, Optional, Protocol, Union
@@ -59,6 +60,7 @@ from typing import Any, Callable, Literal, NamedTuple, Optional, Protocol, Union
 import einops
 import jax
 from jax import numpy as jnp
+from jax.ad_checkpoint import checkpoint_name
 from jax.ad_checkpoint import checkpoint_policies as jax_remat_policies
 
 from axlearn.common import ops, param_init
@@ -111,6 +113,7 @@ from axlearn.common.utils import (
     get_or_none,
     shapes,
     split_prng_key,
+    with_sharding_constraint,
 )
 
 NEG_INF = -1e15
@@ -1082,6 +1085,7 @@ class FusedQKVLinear(BaseQKVLinear):
                 # N.B. this branch (with just the query inputs) is required in
                 # order to get the best step time on TPU for self-attention.
                 inputs = query  # [batch, target_length, target_dim].
+                inputs = checkpoint_name(inputs, name='input_to_qkv')
                 proj = self.qkv_proj.einsum_maybe_quantized(
                     "btd,pdnh->pbtnh", activation=inputs, kernel=params["weight"]
                 )
@@ -1260,24 +1264,26 @@ def apply_rotary_position_embeddings(
     """
     # sin [batch_size, num_heads, sequence_length, embed_size_per_head//2]
     # cos [batch_size, num_heads, sequence_length, embed_size_per_head//2]
+
+    def _rotate_half(x: jnp.ndarray) -> jnp.ndarray:
+        halves = jnp.split(x, 2, axis=-1)
+        return jnp.concatenate((-halves[1], halves[0]), axis=-1)
+
     sin, cos = jnp.split(sinusoidal_pos, 2, axis=-1)
     # sin [θ0,θ1,θ2......θd/2-1] -> sin_pos [θ0,θ0,θ1,θ1,θ2,θ2......θd/2-1,θd/2-1]
     sin_pos = jnp.reshape(jnp.stack([sin, sin], axis=-1), sinusoidal_pos.shape)
     # cos [θ0,θ1,θ2......θd/2-1] -> cos_pos [θ0,θ0,θ1,θ1,θ2,θ2......θd/2-1,θd/2-1]
     cos_pos = jnp.reshape(jnp.stack([cos, cos], axis=-1), sinusoidal_pos.shape)
     # rotate_half_query_layer [-q1,q0,-q3,q2......,-qd-1,qd-2]
-    rotate_half_query = jnp.reshape(
-        jnp.stack([-query[..., 1::2], query[..., ::2]], axis=-1), query.shape
-    )
+    rotate_half_query = _rotate_half(query)
+    
     query = query * cos_pos + rotate_half_query * sin_pos
     # rotate_half_key_layer [-k1,k0,-k3,k2......,-kd-1,kd-2]
-    rotate_half_key = jnp.reshape(jnp.stack([-key[..., 1::2], key[..., ::2]], axis=-1), key.shape)
+    rotate_half_key = _rotate_half(key)
     key = key * cos_pos + rotate_half_key * sin_pos
     if rotary_value:
         # rotate_half_value_layer [-v1,v0,-v3,v2......,-vd-1,vd-2]
-        rotate_half_value = jnp.reshape(
-            jnp.stack([-value[..., 1::2], value[..., ::2]], axis=-1), value.shape
-        )
+        rotate_half_value = _rotate_half(value)
         value = value * cos_pos + rotate_half_value * sin_pos
     return query, key, value
 
@@ -1330,6 +1336,7 @@ class RoFormerQKVLinear(BaseQKVLinear):
         time_step: Optional[Tensor] = None,
     ) -> BaseQKVLinear.Output:
         cfg = self.config
+        query = self._remat_name(query, "input_qkv_ag")
         # Query should have shape of [batch_size, seq_len, num_heads, per_head_dim].
         query, key, value = self.i_proj(query, key=key, value=value)
         query_pos = jnp.arange(query.shape[1])[None]  # [batch_size=1, seq_len].
@@ -1776,6 +1783,7 @@ class MultiheadAttention(BaseLayer):
             ValueError: If key & value are an invalid combination.
             ValueError: If `mode` is unsupported.
         """
+        query = self._remat_name(query, "input_qkv_ag")
         # Validate key & value combination.
         if (key is None) != (value is None):
             raise ValueError(
@@ -1969,6 +1977,7 @@ class MultiheadAttention(BaseLayer):
             segment_ids=segment_ids,
             return_aux=return_aux,
         )
+        output = with_sharding_constraint(output, PartitionSpec('data', None, None))
         return output
 
     def _cap_logits(self, logits: Tensor) -> Tensor:
@@ -2648,10 +2657,17 @@ class TransformerAttentionLayer(BaseLayer):
                 return dict(attention=atten_state), atten_output
 
         if cfg.structure == "prenorm":
+            target = with_sharding_constraint(target, PartitionSpec('data','model',None))
             skip_input = target  # pre-norm: where normalization happens within the residual part.
+            skip_input = self._remat_name(skip_input, 'residual_skip')
             norm_target = self.norm(target)
+            norm_target = with_sharding_constraint(norm_target, PartitionSpec('data',None,None))
+            norm_target = checkpoint_name(norm_target, name='before_thunk')
+            #norm_target = self._remat_name(norm_target, 'attention_norm')
             atten_state, atten_output = attention_thunk(norm_target)
+            atten_output = with_sharding_constraint(atten_output, PartitionSpec('data','model',None))
             data = skip_input + self.stochastic_depth(self.dropout(atten_output.data))
+            data = self._remat_name(data, 'residual_add')
         elif cfg.structure == "postnorm":
             # This is the structure used by the original Transformer, BERT, and RoBERTa.
             atten_state, atten_output = attention_thunk(target)
@@ -2941,18 +2957,24 @@ class TransformerFeedForwardLayer(BaseLayer):
 
         remat_pt1 = "activation"
         remat_pt2 = "linear2"
+        inputs = self._remat_name(inputs, 'residual_input')
         if cfg.structure == "prenorm":
+            x = with_sharding_constraint(inputs, PartitionSpec('data','model',None))
             x = self.norm(inputs)
+            x = self._remat_name(x, 'mlp_norm')
+            x = with_sharding_constraint(x, PartitionSpec('data',None,None))
             x = self._linear1_activation(x)
             x = self._remat_name(x, remat_pt1)
             x = self.dropout1(x)
             x = _linear2(x)
             x = self._remat_name(x, remat_pt2)
+            x = with_sharding_constraint(x, PartitionSpec('data','model',None))
             x = self.dropout2(x)
             x = self.stochastic_depth(x)
             if cfg.residual_weight != 1:
                 x *= cfg.residual_weight
             x += inputs
+            x=self._remat_name(x, 'mlp_residual')
         elif cfg.structure == "postnorm":
             x = self._linear1_activation(inputs)
             x = self._remat_name(x, remat_pt1)
@@ -3289,6 +3311,7 @@ class ParallelTransformerLayer(BaseTransformerLayer):
         """
         inputs = data
         data = self.norm(data)
+        data = checkpoint_name(data, name='before_attention')
         self_atten_outputs = self.self_attention(
             query=data,
             key=data,
@@ -3476,8 +3499,8 @@ def set_double_shard_weights_config(
         ff_layer.linear1.param_partition_spec = (fsdp_axis_names, tp_axis_names)
         ff_layer.linear2.param_partition_spec = (tp_axis_names, fsdp_axis_names)
         # Encourage the right activation sharding.
-        ff_layer.linear1.output_partition_spec = (batch_axis_names, seq_axis_names, tp_axis_names)
-        ff_layer.linear2.output_partition_spec = (batch_axis_names, seq_axis_names, tp_axis_names)
+        ff_layer.linear1.output_partition_spec = (batch_axis_names, None, tp_axis_names)
+        ff_layer.linear2.output_partition_spec = (batch_axis_names, None, None)
 
     if not isinstance(cfg, Sequence):
         cfg = [cfg]
@@ -4071,6 +4094,14 @@ class PipelinedTransformerLayer(BaseStackedTransformerLayer):
 
     # TODO(sneha): extend_step
 
+def save_all_names_but_these(*names_not_to_save):
+    # Save all values, including unnamed ones, excluding the specified names.
+    names_not_to_save = frozenset(names_not_to_save)
+    def policy(prim, *_, **params):
+        if 'name' in params and params['name'] in names_not_to_save:
+            return False
+        return True
+    return policy
 
 def build_remat_spec(
     stack_cfg: Union[
@@ -4105,7 +4136,35 @@ def build_remat_spec(
     # TODO(markblee): Switch to using isinstance everywhere.
     if stack_cfg.klass is PipelinedTransformerLayer:
         return None
-
+    print(f'Stack_cfg {stack_cfg}')
+    if jax.default_backend() == 'neuron':
+        remat_style = os.getenv('REMAT_STYLE', 'default')
+        if remat_style == 'none':
+            # new remat 3
+            return RematSpec(
+                prevent_cse=True,
+                policy=config_for_function(save_all_names_but_these).set(
+                    names_not_to_save=(["noname"]
+                    )
+                ),
+            )
+        else:
+            fused_qkv_name = stack_cfg.layer.self_attention.attention.input_linear.klass.__name__
+            ffn_name = stack_cfg.layer.feed_forward.klass.__name__
+            attention_name = stack_cfg.layer.self_attention.attention.klass.__name__
+            print(stack_cfg.layer.self_attention.attention)
+            return RematSpec(
+                prevent_cse=stack_cfg.klass is StackedTransformerLayer,
+                # If we are running inside a jax.lax.scan (Repeated/Pipelined transformers
+                # or Repeated Conformers) we can enable common subexpression elimination optimizations.
+                policy=config_for_function(jax.checkpoint_policies.save_any_names_but_these).set(
+                    names_not_to_save=(["all_gather","before_attention", "before_thunk", "input_to_qkv"] +
+                        [f"{attention_name}.{el}"
+                        for el in ['input_qkv_ag', 'o_proj']] +
+                        [f"{ffn_name}.{el}" for el in ["mlp_norm", "linear2"]]
+                    )
+                ),
+            )
     checkpoints = []
     if self_attention:
         attention_name = stack_cfg.layer.self_attention.attention.klass.__name__
@@ -4113,7 +4172,7 @@ def build_remat_spec(
             [f"{attention_name}.{el}" for el in ["q_proj", "k_proj", "v_proj", "context", "o_proj"]]
         )
 
-    if feed_forward and hasattr(stack_cfg.layer, "feed_forward"):
+    if False and feed_forward and hasattr(stack_cfg.layer, "feed_forward"):
         ffn_name = stack_cfg.layer.feed_forward.klass.__name__
         checkpoints.extend([f"{ffn_name}.{el}" for el in ["activation", "linear2"]])
 
@@ -4184,7 +4243,8 @@ class CausalAttentionLogitBiasLayer(AttentionLogitBiasLayer):
     def forward(self, *, segment_ids: Tensor, positions: Tensor) -> Tensor:
         """Refer to AttentionLogitBiasLayer.forward for docstring."""
         # Note: padding tokens are not explicitly masked.
-        causal_bias = (positions[:, None, :, None] < positions[:, None, None, :]) * NEG_INF
+        segment_ids = jnp.asarray(segment_ids, dtype=jnp.bfloat16)
+        causal_bias = jnp.asarray((positions[:, None, :, None] < positions[:, None, None, :]) * NEG_INF, dtype=jnp.bfloat16)
         return apply_attention_logit_biases(
             causal_bias, make_segment_mask(source_segments=segment_ids, target_segments=segment_ids)
         )

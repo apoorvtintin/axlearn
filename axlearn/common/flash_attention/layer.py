@@ -252,12 +252,13 @@ class FlashAttention(GroupedQueryAttention):
             else PartitionSpec(None)
         )
 
-        attention_logit_biases_spec = cfg.mha_dim_to_partition_spec["bnts"]
-        if attention_logit_biases is not None:
-            attention_logit_biases_spec = self._logit_biases_spec(attention_logit_biases)
-            attention_logit_biases = with_sharding_constraint(
-                attention_logit_biases, attention_logit_biases_spec
-            )
+        # attention_logit_biases_spec = cfg.mha_dim_to_partition_spec["bnts"]
+        attention_logit_biases_spec = PartitionSpec(None, None, None, None)
+        # if attention_logit_biases is not None:
+        #     attention_logit_biases_spec = self._logit_biases_spec(attention_logit_biases)
+        #     attention_logit_biases = with_sharding_constraint(
+        #         attention_logit_biases, attention_logit_biases_spec
+        #     )
 
         # Scale query and key.
         q_proj = self.scale_query(q_proj)
