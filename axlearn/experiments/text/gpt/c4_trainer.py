@@ -57,8 +57,6 @@ from axlearn.experiments.trainer_config_utils import TrainerConfigFn
 
 import jax
 import jax_neuronx
-from jax._src import compilation_cache 
-compilation_cache.set_cache_dir('./jax_cache')
 
 # Sentencepiece vocabs generated from c4/en:3.0.1.
 # See bpe_{32k,128k}.json for the sentencepiece settings.
