@@ -21,8 +21,7 @@ elif cores_per_lnc == '1':
 else:
     raise ValueError("LNC environment variable must be set to '1' or '2'")
 
-disable_sharded_attn_kernel = os.environ.get('DISABLE_SHARDED_ATTN_KERNEL')
-if disable_sharded_attn_kernel is not None:
+if os.environ.get('DISABLE_SHARDED_ATTN_KERNEL') == '1':
     use_lnc = False
 
 if use_lnc:
@@ -52,7 +51,7 @@ def _mha_forward(query, key, value, causal, softmax_scale):
   seed = jnp.array([1])
 
   # Call the NKI kernel
-  if os.environ.get('ENABLE_NEW_UNSHARDED_ATTN_KERNEL'):
+  if os.environ.get('ENABLE_NEW_UNSHARDED_ATTN_KERNEL') == '1':
       from neuronxcc.nki.kernels.attention import flash_attn_bwd, flash_fwd
       from neuronxcc.starfish.penguin.targets.nki.private_api import vnc
       assert (num_heads % 2) == 0 and (num_heads // 2 > 0), f'unexpect num_heads: {num_heads}'
@@ -90,7 +89,7 @@ def _mha_backward(causal, softmax_scale, res, d_attn_output):
   seed = jnp.array([1])
 
   # Call the NKI kernel
-  if os.environ.get('ENABLE_NEW_UNSHARDED_ATTN_KERNEL'):
+  if os.environ.get('ENABLE_NEW_UNSHARDED_ATTN_KERNEL') == '1':
       from neuronxcc.nki.kernels.attention import flash_attn_bwd
       from neuronxcc.starfish.penguin.targets.nki.private_api import vnc
       assert (num_heads % 2) == 0 and (num_heads // 2 > 0), f'unexpected num_heads: {num_heads}'
