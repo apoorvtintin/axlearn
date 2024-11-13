@@ -3770,13 +3770,18 @@ class PipelinedTransformerLayer(BaseStackedTransformerLayer):
 
     # TODO(sneha): extend_step
 
-def save_all_names_but_these(*names_not_to_save):
+def save_only_these(*names_to_save):
     # Save all values, including unnamed ones, excluding the specified names.
-    names_not_to_save = frozenset(names_not_to_save)
+    names_to_save = frozenset(names_to_save)
     def policy(prim, *_, **params):
-        if 'name' in params and params['name'] in names_not_to_save:
-            return False
-        return True
+        if 'name' in params and params['name'] in names_to_save:
+            return True
+        if 'name' in params and 'linear1' in params['name']:
+            print(f"[WIP] SAVING LINEAR1: {params['name']}")
+            return True
+        if 'name' in params:
+            print(f"[WIP] Not saving tensor: {params['name']}")
+        return False
     return policy
 
 def build_remat_spec(
@@ -3814,10 +3819,14 @@ def build_remat_spec(
         remat_style = os.getenv('REMAT_STYLE', 'default')
         if remat_style == 'none':
             # new remat 3
+            ffn_name = stack_cfg.layer.feed_forward.klass.__name__
+            attention_name = stack_cfg.layer.self_attention.attention.klass.__name__
             return RematSpec(
                 prevent_cse=True,
-                policy=config_for_function(save_all_names_but_these).set(
-                    names_not_to_save=(["noname"]
+                policy=config_for_function(save_only_these).set(
+                    names_to_save=(
+                        ["input_to_qkv"] +
+                        [f"{ffn_name}.{el}" for el in ["linear1"]]
                     )
                 ),
             )
