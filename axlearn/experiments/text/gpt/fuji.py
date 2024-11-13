@@ -16,6 +16,7 @@ from typing import Any, Dict, Optional, Union
 from axlearn.common import causal_lm, config
 from axlearn.common.attention import (
     FusedGroupedQKVLinear,
+    GroupedQKVLinear,
     FusedQKVLinear,
     GroupedQueryAttention,
     MultiheadAttention,
@@ -65,7 +66,7 @@ MAX_SEQUENCE_LENGTH = {
 }
 
 
-TP_DEGREE = int(os.environ.get('TP_DEGREE', '64'))
+TP_DEGREE = int(os.environ.get('TP_DEGREE', '4'))
 TRN_MODEL_AXIS_SIZE = TP_DEGREE
 
 GRADIENT_ACCUMULATION_MICROBATCHES=1
@@ -200,7 +201,7 @@ def get_trainer_kwargs(
                 hidden_dim=128 * 64,
                 num_heads=64,
                 # No GQA support in V1 models, so num_kv_heads is the same as num_heads.
-                num_kv_heads=None, #if version == Version.V1 else 8,
+                num_kv_heads=None if version == Version.V1 else 8,
                 rope_theta=rope_theta,
                 flash_attention=flash_attention,
             ),
@@ -312,7 +313,8 @@ def model_config(
         ffn_dim = scaled_hidden_dim(scale=8 / 3, round_up_to_multiples_of=256)
     if num_kv_heads:
         atten_cfg = GroupedQueryAttention.default_config()
-        atten_input_linear = FusedGroupedQKVLinear.default_config().set(num_kv_heads=num_kv_heads)
+        # atten_input_linear = FusedGroupedQKVLinear.default_config().set(num_kv_heads=num_kv_heads)
+        atten_input_linear = GroupedQKVLinear.default_config().set(num_kv_heads=num_kv_heads)
     else:
         atten_cfg = MultiheadAttention.default_config()
         atten_input_linear = FusedQKVLinear.default_config()
