@@ -68,7 +68,9 @@ MAX_SEQUENCE_LENGTH = {
 TP_DEGREE = int(os.environ.get('TP_DEGREE', '64'))
 TRN_MODEL_AXIS_SIZE = TP_DEGREE
 
-GRADIENT_ACCUMULATION_MICROBATCHES=1
+GRADIENT_ACCUMULATION_MICROBATCHES = int(
+        os.environ.get("NEURON_GRAD_ACC_COUNT",1))
+NUM_NODES = int(os.environ.get("NEURON_NUM_NODES",1))
 
 ROPE_THETA = {
     Version.V1: 5e5,
@@ -110,6 +112,10 @@ def get_trainer_kwargs(
     tokens_per_batch = 4 * (1024**2)  # 4M tokens.
     max_step = TOTAL_TOKENS[version][model_size] // tokens_per_batch
     max_sequence_length = MAX_SEQUENCE_LENGTH[version]
+    train_batch_size  = int(jax.device_count()/TRN_MODEL_AXIS_SIZE)
+    train_batch_size *= GRADIENT_ACCUMULATION_MICROBATCHES
+    train_batch_size *= NUM_NODES 
+
 
     # Whether to use grouped query attention.
     num_kv_heads = None

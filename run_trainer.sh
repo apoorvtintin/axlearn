@@ -16,6 +16,13 @@ HLO_DUMP_PATH=${TEST_ARTIFACTS_PATH}/hlo_dump
 export XLA_FLAGS="--xla_dump_hlo_as_text --xla_disable_hlo_passes=aws_neuron_flip_all_gather_dot --xla_dump_hlo_as_proto --xla_dump_to=${HLO_DUMP_PATH} --xla_dump_hlo_pass_re='.*'"
 
 
+#Config
+:${NEURON_NUM_NODES:=100000}
+:${NEURON_GRAD_ACC_COUNT=1}
+
+export NEURON_NUM_NODES
+export NEURON_GRAD_ACC_COUNT
+
 # Neuron compiler flags
 export NEURON_CC_FLAGS="--framework=XLA"
 export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} --target=trn2 --distribution-strategy=llm-training"
