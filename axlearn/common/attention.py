@@ -2711,10 +2711,12 @@ class TransformerFeedForwardLayer(BaseLayer):
         remat_pt2 = "linear2"
         inputs = self._remat_name(inputs, 'residual_input')
         if cfg.structure == "prenorm":
+            # WIP
             x = with_sharding_constraint(inputs, PartitionSpec('data','model',None))
             x = self.norm(inputs)
             x = self._remat_name(x, 'mlp_norm')
             x = with_sharding_constraint(x, PartitionSpec('data',None,None))
+            # x = self._remat_name(x, 'up_proj_input')
             x = self._linear1_activation(x)
             x = self._remat_name(x, remat_pt1)
             x = self.dropout1(x)
@@ -3827,6 +3829,23 @@ def build_remat_spec(
                     names_to_save=(
                         ["input_to_qkv"] +
                         [f"{ffn_name}.{el}" for el in ["linear1"]]
+                    )
+                ),
+            )
+        elif remat_style == "experiment":
+            fused_qkv_name = stack_cfg.layer.self_attention.attention.input_linear.klass.__name__
+            ffn_name = stack_cfg.layer.feed_forward.klass.__name__
+            attention_name = stack_cfg.layer.self_attention.attention.klass.__name__
+            print(stack_cfg.layer.self_attention.attention)
+            return RematSpec(
+                prevent_cse=stack_cfg.klass is StackedTransformerLayer,
+                # If we are running inside a jax.lax.scan (Repeated/Pipelined transformers
+                # or Repeated Conformers) we can enable common subexpression elimination optimizations.
+                policy=config_for_function(jax.checkpoint_policies.save_any_names_but_these).set(
+                    names_not_to_save=(["all_gather","before_attention", "before_thunk", "input_to_qkv"] +
+                        [f"{attention_name}.{el}"
+                        for el in ['input_qkv_ag', 'q_proj', 'k_proj', 'v_proj', 'o_proj']] +
+                        [f"{ffn_name}.{el}" for el in ["mlp_norm", "linear2", "activation", "mlp_norm", "residual_input", "residual_add", "mlp_residual"]]
                     )
                 ),
             )
