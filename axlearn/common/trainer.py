@@ -332,14 +332,15 @@ class SpmdTrainer(Module):
                 break
             current_step = self.step
             if current_step == last_step:
-                self._step_log(
-                    "Watchdog triggered because step has not incremented in the last %s seconds.\n"
-                    "NOTE: this is not an error message, but meant to help debugging "
-                    "in case the trainer is stuck.\n"
-                    "Threads:\n%s",
-                    cfg.watchdog_timeout_seconds,
-                    "\n".join(itertools.chain.from_iterable(thread_stack_traces())),
-                )
+                self._step_log("shoo away the watch dog!")
+                # self._step_log(
+                #     "Watchdog triggered because step has not incremented in the last %s seconds.\n"
+                #     "NOTE: this is not an error message, but meant to help debugging "
+                #     "in case the trainer is stuck.\n"
+                #     "Threads:\n%s",
+                #     cfg.watchdog_timeout_seconds,
+                #     "\n".join(itertools.chain.from_iterable(thread_stack_traces())),
+                # )
             else:
                 self.vlog(1, "Watchdog check passed: %s -> %s", last_step, current_step)
         logging.info("Watchdog loop done")
