@@ -155,7 +155,7 @@ def get_trainer_kwargs(
     elif model_size == "7B":
         trainer_kwargs = dict(
             model_kwargs=dict(
-                num_layers=10,
+                num_layers=15,
                 hidden_dim=8192,
                 ffn_dim=scaled_hidden_dim(scale=4, round_up_to_multiples_of=16),
                 num_heads=64,
