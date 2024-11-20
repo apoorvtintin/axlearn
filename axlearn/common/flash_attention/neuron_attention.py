@@ -93,9 +93,9 @@ def _mha_backward(causal, softmax_scale, res, d_attn_output):
   # Call the NKI kernel
   if os.environ.get('ENABLE_NEW_UNSHARDED_ATTN_KERNEL'):
       from neuronxcc.nki.kernels.attention import flash_attn_bwd
-      from neuronxcc.starfish.penguin.targets.nki.private_api import vnc
+      import neuronxcc.nki.language as nl
       assert (num_heads % 2) == 0 and (num_heads // 2 > 0), f'unexpected num_heads: {num_heads}'
-      d_query, d_key, d_value = flash_attn_bwd[batch_size, vnc(2), num_heads // 2](q, k, v, o, dy, lse, seed, use_causal_mask=causal, mixed_precision=True, dropout_p=0.0, softmax_scale=softmax_scale)
+      d_query, d_key, d_value = flash_attn_bwd[batch_size, nl.nc(2) * (num_heads//2)](q, k, v, o, dy, lse, seed, use_causal_mask=causal, mixed_precision=True, dropout_p=0.0, softmax_scale=softmax_scale)
   else:
       from neuronxcc.nki._private_kernels.legacy.attention import flash_attn_bwd
       from neuronxcc.nki._private_kernels.attention import flash_attn_bwd_shardable
