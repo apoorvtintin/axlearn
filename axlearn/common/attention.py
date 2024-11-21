@@ -895,6 +895,9 @@ class QKVLinear(BaseQKVLinear):
         """
         key = query if key is None else key
         value = query if value is None else value
+        query = self._remat_name(query, "query")
+        key = self._remat_name(key, "key")
+        value = self._remat_name(value, "value")
         q_proj = self.q_proj(query)
         k_proj = self.k_proj(key)
         v_proj = self.v_proj(value)
@@ -2395,6 +2398,7 @@ class TransformerAttentionLayer(BaseLayer):
             skip_input = target  # pre-norm: where normalization happens within the residual part.
             skip_input = self._remat_name(skip_input, 'residual_skip')
             norm_target = self.norm(target)
+            # norm_target = self._remat_name(norm_target, 'attn_norm')
             norm_target = with_sharding_constraint(norm_target, PartitionSpec('data',None,None))
             norm_target = checkpoint_name(norm_target, name='before_thunk')
             #norm_target = self._remat_name(norm_target, 'attention_norm')
@@ -2711,12 +2715,10 @@ class TransformerFeedForwardLayer(BaseLayer):
         remat_pt2 = "linear2"
         inputs = self._remat_name(inputs, 'residual_input')
         if cfg.structure == "prenorm":
-            # WIP
             x = with_sharding_constraint(inputs, PartitionSpec('data','model',None))
             x = self.norm(inputs)
             x = self._remat_name(x, 'mlp_norm')
             x = with_sharding_constraint(x, PartitionSpec('data',None,None))
-            # x = self._remat_name(x, 'up_proj_input')
             x = self._linear1_activation(x)
             x = self._remat_name(x, remat_pt1)
             x = self.dropout1(x)
@@ -2774,7 +2776,7 @@ class TransformerFeedForwardLayer(BaseLayer):
         if isinstance(cfg.activation, tuple):
             activations = [
                 self._get_activation(
-                    self.children[f"linear1_{i}"](x), activation_fn_name=activation
+                    self._remat_name(self.children[f"linear1_{i}"](x), f"linear1_{i}"), activation_fn_name=activation
                 )
                 for i, activation in enumerate(cfg.activation)
             ]
@@ -3777,13 +3779,14 @@ def save_only_these(*names_to_save):
     names_to_save = frozenset(names_to_save)
     def policy(prim, *_, **params):
         if 'name' in params and params['name'] in names_to_save:
+            print(f"[WIP] Saving {params['name']}")
             return True
-        if 'name' in params and 'linear1' in params['name']:
-            print(f"[WIP] SAVING LINEAR1: {params['name']}")
-            return True
-        if 'name' in params:
+        elif 'name' in params:
             print(f"[WIP] Not saving tensor: {params['name']}")
-        return False
+            return False
+        else:
+            print("[WIP] Not saving unnamed tensor")
+            return False
     return policy
 
 def build_remat_spec(
@@ -3827,25 +3830,10 @@ def build_remat_spec(
                 prevent_cse=True,
                 policy=config_for_function(save_only_these).set(
                     names_to_save=(
-                        ["input_to_qkv"] +
-                        [f"{ffn_name}.{el}" for el in ["linear1"]]
-                    )
-                ),
-            )
-        elif remat_style == "experiment":
-            fused_qkv_name = stack_cfg.layer.self_attention.attention.input_linear.klass.__name__
-            ffn_name = stack_cfg.layer.feed_forward.klass.__name__
-            attention_name = stack_cfg.layer.self_attention.attention.klass.__name__
-            print(stack_cfg.layer.self_attention.attention)
-            return RematSpec(
-                prevent_cse=stack_cfg.klass is StackedTransformerLayer,
-                # If we are running inside a jax.lax.scan (Repeated/Pipelined transformers
-                # or Repeated Conformers) we can enable common subexpression elimination optimizations.
-                policy=config_for_function(jax.checkpoint_policies.save_any_names_but_these).set(
-                    names_not_to_save=(["all_gather","before_attention", "before_thunk", "input_to_qkv"] +
-                        [f"{attention_name}.{el}"
-                        for el in ['input_qkv_ag', 'q_proj', 'k_proj', 'v_proj', 'o_proj']] +
-                        [f"{ffn_name}.{el}" for el in ["mlp_norm", "linear2", "activation", "mlp_norm", "residual_input", "residual_add", "mlp_residual"]]
+                        [f"FlashAttention.{el}"
+                          for el in ['q_proj', 'k_proj', 'v_proj']] +
+                        ["input_to_qkvee", "TransformerAttentionLayer.residual_add", "TransformerFeedForwardLayer.mlp_residual"] +
+                        [f"{ffn_name}.{el}" for el in ["linear1_0", "linear1_1"]]
                     )
                 ),
             )
