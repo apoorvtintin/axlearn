@@ -443,6 +443,11 @@ def with_sharding_constraint(x, shardings):
         return x
     return jax.lax.with_sharding_constraint(x, shardings)
 
+def maybe_shard(x, partition_spec) -> Tensor:
+    if partition_spec is None:
+        return x
+    assert len(x.shape) == len(partition_spec)
+    return with_sharding_constraint(x, PartitionSpec(partition_spec))
 
 def maybe_shard(x: NestedTensor, partition_spec: Optional[PartitionSpec]) -> NestedTensor:
     if partition_spec is None:
