@@ -350,9 +350,11 @@ class RMSNorm(BaseNormalizationLayer):
         x_dtype = x.dtype
         if cfg.forward_dtype is not None:
             x = x.astype(cfg.forward_dtype)
+        x = with_sharding_constraint(x, PartitionSpec('fsdp','model', None))
         moment2 = (x * x).mean(axis=-1, keepdims=True)
         x = x * jax.lax.rsqrt(moment2 + cfg.eps)
         x = x.astype(x_dtype)
+        x = with_sharding_constraint(x, PartitionSpec('fsdp','model', None))
         x = x * self.parameters["scale"]
         x = maybe_shard(x, cfg.output_partition_spec)
         return x
