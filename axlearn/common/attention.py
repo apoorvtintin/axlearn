@@ -3789,6 +3789,15 @@ def save_only_these(*names_to_save):
             return False
     return policy
 
+def save_all_names_but_these(*names_not_to_save):
+    # Save all values, including unnamed ones, excluding the specified names.
+    names_not_to_save = frozenset(names_not_to_save)
+    def policy(prim, *_, **params):
+        if 'name' in params and params['name'] in names_not_to_save:
+            return False
+        return True
+    return policy
+
 def build_remat_spec(
     stack_cfg: Union[
         BaseStackedTransformerLayer.Config, "RepeatedConformerLayer.Config"  # type: ignore
@@ -3823,7 +3832,14 @@ def build_remat_spec(
     if jax.default_backend() == 'neuron':
         remat_style = os.getenv('REMAT_STYLE', 'default')
         if remat_style == 'none':
-            # new remat 3
+            return RematSpec(
+                prevent_cse=True,
+                policy=config_for_function(save_all_names_but_these).set(
+                    names_not_to_save=(["noname"]
+                    )
+                ),
+            )
+        elif remat_style == 'trn2':
             ffn_name = stack_cfg.layer.feed_forward.klass.__name__
             attention_name = stack_cfg.layer.self_attention.attention.klass.__name__
             return RematSpec(
