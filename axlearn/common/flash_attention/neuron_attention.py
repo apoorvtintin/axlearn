@@ -7,6 +7,7 @@ from functools import partial
 import jax.numpy as jnp
 import neuronxcc.nki.language as nl
 import numpy as np
+import jax_neuronx
 from jax_neuronx import nki_call
 from neuronxcc.nki._private_kernels.legacy.attention import flash_attn_bwd, flash_fwd
 
