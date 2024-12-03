@@ -22,6 +22,7 @@ from axlearn.common.attention_bias import (
 )
 from axlearn.common.flash_attention.gpu_attention import cudnn_dot_product_attention
 from axlearn.common.flash_attention.gpu_attention import flash_attention as gpu_flash_attention
+from axlearn.common.flash_attention.neuron_attention import flash_attention as neuron_flash_attention
 from axlearn.common.flash_attention.tpu_attention import tpu_flash_attention
 from axlearn.common.utils import Tensor
 
@@ -85,7 +86,7 @@ MultiHeadAttentionImpl = Callable[[Tensor, Tensor, Tensor, Tensor, Tensor], Tens
 
 
 def flash_attention_implementation(
-    backend: Literal["cpu", "tpu", "gpu", "xla"],
+    backend: Literal["cpu", "tpu", "gpu", "xla", "neuron"],
     *,
     softmax_scale: float,
     block_size: int = 128,
@@ -215,7 +216,18 @@ def flash_attention_implementation(
                 softmax_scale=softmax_scale,
                 block_size=block_size,
             )
+        elif backend == "neuron":
+            from axlearn.common.flash_attention.neuron_attention import (
+                flash_attention as neuron_flash_attention,
+            )
 
+            # shard_map-decorated function needs to be jitted.
+            @jax.jit
+            def jit_attn(query, key, value, bias):
+                return neuron_flash_attention(
+                    query, key, value, causal, softmax_scale)
+
+            return jit_attn
         elif backend in ("cpu", "xla"):
             if backend == "cpu":
                 logging.warning("Flash attention CPU backend is for testing only.")
@@ -226,6 +238,7 @@ def flash_attention_implementation(
             causal, segment_ids, explicit_bias = split(
                 bias, CausalAttentionBias, SegmentIdAttentionBias
             )
+
             return mha_reference(
                 query,
                 key,
