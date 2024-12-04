@@ -44,9 +44,11 @@ from axlearn.common.trainer_config_modifier import (
     PartitionSpecModifier,
     RematSpecModifier,
 )
+
 from axlearn.common.utils import (
     extended_checkpoint_policies,
     save_and_offload_only_these_names_regex,
+    DataPartitionType
 )
 from axlearn.experiments.text.gpt.common import (
     STEP_DTYPE,
@@ -664,6 +666,7 @@ def get_trainer_kwargs(
     if version == Version.V3_TIKTOKEN:  # tiktoken tokenizer
         model_kwargs["pad_token_id"] = 128004
         model_kwargs["eos_token_id"] = 128001
+    trainer_kwargs["input_partition_type"] = None if backend != "neuron" else DataPartitionType.BATCH
     trainer_kwargs["model_cfg"] = model_config(**model_kwargs)
     trainer_kwargs["learner_cfg"] = adamw_decoupled_learner_config(
         max_step=trainer_kwargs["max_step"],
