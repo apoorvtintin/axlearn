@@ -65,6 +65,7 @@ import einops
 import jax
 from jax import numpy as jnp
 from jax._src.ad_checkpoint import name_p
+from jax.ad_checkpoint import checkpoint_policies as jax_remat_policies
 from jax._src.interpreters import partial_eval as pe
 from jax.core import Primitive
 
@@ -4002,7 +4003,6 @@ def _save_and_offload_only_these_names_regex(
 SELF_ATTENTION_SAVE_PATTERN = ".*([qkvo]_proj|context)"
 FEED_FORWARD_SAVE_PATTERN = ".*linear[12]_.*"
 
-
 def build_remat_spec(
     stack_cfg: Union[
         BaseStackedTransformerLayer.Config, "RepeatedConformerLayer.Config"  # type: ignore
@@ -4037,29 +4037,22 @@ def build_remat_spec(
     if stack_cfg.klass is PipelinedTransformerLayer:
         return None
 
-    policy = config_for_function(_save_and_offload_only_these_names_regex).set(
-        names_which_can_be_saved=save_pattern,
-        names_which_can_be_offloaded=offload_pattern,
-        offload_src="device",
-        offload_dst=offload_dst,
-    )
-
+    policy = None
     backend = jax.default_backend()
-    if backend == 'none':
-        # new remat 3
+    if backend != "neuron":
+        policy = config_for_function(_save_and_offload_only_these_names_regex).set(
+            names_which_can_be_saved=save_pattern,
+            names_which_can_be_offloaded=offload_pattern,
+            offload_src="device",
+            offload_dst=offload_dst,
+        )
+    else:
         ffn_name = stack_cfg.layer.feed_forward.klass.__name__
         attention_name = stack_cfg.layer.self_attention.attention.klass.__name__
-        return RematSpec(
-            prevent_cse=True,
-            policy=config_for_function(save_only_these).set(
-                names_to_save=(
-                    [f"FlashAttention.{el}"
-                        for el in ['q_proj', 'k_proj', 'v_proj']] +
-                    ["input_to_qkvee", "TransformerAttentionLayer.residual_add", "TransformerFeedForwardLayer.mlp_residual"] +
-                    [f"{ffn_name}.{el}" for el in ["linear1_0", "linear1_1"]]
-                )
-            ),
-        )
+        checkpoints = []
+        checkpoints.extend([f"{attention_name}.{el}" for el in ['q_proj', 'k_proj', 'v_proj']] + ["input_to_qkvee", "TransformerAttentionLayer.residual_add", "TransformerFeedForwardLayer.mlp_residual"])
+        checkpoints.extend([f"{ffn_name}.{el}" for el in ["linear1_0", "linear1_1"]])
+        policy = config_for_function(jax_remat_policies.save_only_these_names).set(names_which_can_be_saved=checkpoints)
 
     return RematSpec(
         prevent_cse=stack_cfg.klass is StackedTransformerLayer,
