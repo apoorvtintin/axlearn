@@ -60,7 +60,7 @@ def _mha_forward(query, key, value, bias, causal, softmax_scale):
       import neuronxcc.nki.language as nl
 
       assert (num_heads % 2) == 0 and (num_heads // 2 > 0), f'unexpect num_heads: {num_heads}'
-      attn_output, lse = flash_fwd[batch_size, vnc(2), num_heads//2](q, k, v, bias, seed, use_causal_mask=causal, softmax_scale=softmax_scale, mixed_precision=True, dropout_p=0.0)
+      attn_output, lse = flash_fwd[batch_size, nl.nc(2) * (num_heads//2)](q, k, v, seed, bias, use_causal_mask=causal, softmax_scale=softmax_scale, mixed_precision=True, dropout_p=0.0)
   else:
       #NOTE : Please make a feature request to neuron compiler team if this is needed.
       assert bias = None, f"logit_bias is not supported in legacy kernels. Set envvar ENABLED_NEW_UNSHARDED_ATTN_KERNEL to use new kernel"
@@ -100,7 +100,7 @@ def _mha_backward(causal, softmax_scale, res, d_attn_output):
       from neuronxcc.nki.kernels.attention import flash_attn_bwd
       import neuronxcc.nki.language as nl
       assert (num_heads % 2) == 0 and (num_heads // 2 > 0), f'unexpected num_heads: {num_heads}'
-      d_query, d_key, d_value = flash_attn_bwd[batch_size, vnc(2), num_heads // 2](q, k, v, o, dy, lse, seed, bias, use_causal_mask=causal, mixed_precision=True, dropout_p=0.0, softmax_scale=softmax_scale)
+      d_query, d_key, d_value = flash_attn_bwd[batch_size, nl.nc(2) * (num_heads//2)](q, k, v, o, dy, lse, seed, bias, use_causal_mask=causal, mixed_precision=True, dropout_p=0.0, softmax_scale=softmax_scale)
   else:
       #NOTE : Please make a feature request to neuron compiler team if this is needed.
       assert bias = None, f"logit_bias is not supported in legacy kernels. Set envvar ENABLED_NEW_UNSHARDED_ATTN_KERNEL to use new kernel"
