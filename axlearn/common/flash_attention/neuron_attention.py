@@ -63,7 +63,7 @@ def _mha_forward(query, key, value, bias, causal, softmax_scale):
       attn_output, lse = flash_fwd[batch_size, nl.nc(2) * (num_heads//2)](q, k, v, seed, bias, use_causal_mask=causal, softmax_scale=softmax_scale, mixed_precision=True, dropout_p=0.0)
   else:
       #NOTE : Please make a feature request to neuron compiler team if this is needed.
-      assert bias = None, f"logit_bias is not supported in legacy kernels. Set envvar ENABLED_NEW_UNSHARDED_ATTN_KERNEL to use new kernel"
+      assert bias == None, f"logit_bias is not supported in legacy kernels. Set envvar ENABLED_NEW_UNSHARDED_ATTN_KERNEL to use new kernel"
       from neuronxcc.nki._private_kernels.legacy.attention import flash_fwd
       from neuronxcc.nki._private_kernels.attention import flash_fwd_shardable
       from neuronxcc.starfish.penguin.targets.nki.private_api import vnc
@@ -103,7 +103,7 @@ def _mha_backward(causal, softmax_scale, res, d_attn_output):
       d_query, d_key, d_value = flash_attn_bwd[batch_size, nl.nc(2) * (num_heads//2)](q, k, v, o, dy, lse, seed, bias, use_causal_mask=causal, mixed_precision=True, dropout_p=0.0, softmax_scale=softmax_scale)
   else:
       #NOTE : Please make a feature request to neuron compiler team if this is needed.
-      assert bias = None, f"logit_bias is not supported in legacy kernels. Set envvar ENABLED_NEW_UNSHARDED_ATTN_KERNEL to use new kernel"
+      assert bias == None, f"logit_bias is not supported in legacy kernels. Set envvar ENABLED_NEW_UNSHARDED_ATTN_KERNEL to use new kernel"
       from neuronxcc.nki._private_kernels.legacy.attention import flash_attn_bwd
       from neuronxcc.nki._private_kernels.attention import flash_attn_bwd_shardable
       from neuronxcc.starfish.penguin.targets.nki.private_api import vnc
