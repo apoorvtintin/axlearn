@@ -27,6 +27,7 @@ from axlearn.vision.mobilenets import ModelNames, named_model_configs
 from axlearn.vision.param_converter import MobileNetsParamConverter, ResNetParamConverter
 from axlearn.vision.resnet import ResNet
 
+from . import pytestmark
 
 # pylint: disable=no-self-use
 class ClassificationModelTest(parameterized.TestCase):

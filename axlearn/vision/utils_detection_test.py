@@ -7,6 +7,7 @@ from absl.testing import absltest, parameterized
 
 from axlearn.vision import utils_detection
 
+from . import pytestmark
 
 # pylint: disable=no-self-use
 class BoxUtilsTest(parameterized.TestCase, tf.test.TestCase):

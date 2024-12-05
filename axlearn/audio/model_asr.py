@@ -11,6 +11,7 @@ from axlearn.common.config import REQUIRED, Required, config_class
 from axlearn.common.module import Module
 from axlearn.common.utils import Nested, Tensor, validate_contains_paths
 
+from . import pytestmark
 
 class ASRModel(BaseEncoderDecoderModel):
     """ASR Encoder-Decoder model.

@@ -6,6 +6,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import absltest, parameterized
+import pytest
 
 from axlearn.common.module import functional as F
 from axlearn.common.test_utils import TestCase
@@ -18,6 +19,9 @@ from axlearn.common.vision_transformer import (
     sequence_to_space_with_scaling,
 )
 from axlearn.vision import mask_generator
+
+
+pytestmark = pytest.mark.vision
 
 
 class ModelTest(TestCase):

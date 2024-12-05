@@ -18,6 +18,7 @@ from axlearn.common.utils import NestedTensor, Tensor
 from axlearn.vision.eval_detection import COCOMetricCalculator
 from axlearn.vision.input_detection import DetectionInput, fake_detection_dataset
 
+from . import pytestmark
 
 class DummyModel(BaseModel):
     """A dummy model directly outputs groundtruth."""

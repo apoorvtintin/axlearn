@@ -3,11 +3,13 @@
 """Tests ImageNet configs."""
 
 from absl.testing import parameterized
+import pytest
 
 from axlearn.common.test_utils import TestWithTemporaryCWD
 from axlearn.common.utils import set_data_dir
 from axlearn.experiments.vision import imagenet
 
+pytestmark = pytest.mark.vision
 
 class InputConfigTest(TestWithTemporaryCWD):
     """Tests input configs."""

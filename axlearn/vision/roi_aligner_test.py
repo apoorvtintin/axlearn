@@ -8,6 +8,7 @@ from absl.testing import absltest
 from axlearn.common.module import functional as F
 from axlearn.vision.roi_aligner import RoIAligner
 
+from . import pytestmark
 
 # pylint: disable=no-self-use
 class RoIAlignerTest(absltest.TestCase):

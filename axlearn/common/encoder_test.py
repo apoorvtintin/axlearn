@@ -10,6 +10,7 @@ import jax.numpy as jnp
 import numpy as np
 from absl.testing import absltest, parameterized
 from transformers import BertConfig, BertModel
+import pytest
 
 from axlearn.common import utils
 from axlearn.common.attention import (
@@ -217,6 +218,7 @@ class TestCausalEncoder(TestCase):
         prefill_states=[True, False],
         prefix_zero=[True, False],
     )
+    @pytest.mark.inference
     def test_extend_step(self, prefill_states: bool, prefix_zero: bool):
         hidden_dim = 12
         vocab_size = 24

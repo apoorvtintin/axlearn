@@ -11,6 +11,7 @@ from axlearn.common import input_text, input_tf_data
 from axlearn.common.config import InstantiableConfig
 from axlearn.common.utils import Nested
 
+from . import pytestmark
 
 def speech_input(
     *,

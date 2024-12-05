@@ -6,6 +6,7 @@ from absl.testing import absltest
 
 from axlearn.vision import similarity_ops
 
+from . import pytestmark
 
 # pylint: disable=no-self-use
 class IntersectionTest(absltest.TestCase):

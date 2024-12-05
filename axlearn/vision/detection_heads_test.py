@@ -9,6 +9,7 @@ from axlearn.common import utils
 from axlearn.common.module import functional as F
 from axlearn.vision.detection_heads import BoxPredictionType, RCNNDetectionHead, RPNHead
 
+from . import pytestmark
 
 class RCNNDetectionHeadTest(parameterized.TestCase):
     """Tests RCNNDetectionHead."""

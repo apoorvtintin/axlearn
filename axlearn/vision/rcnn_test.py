@@ -17,6 +17,7 @@ REF_FPN_PARAMS = 3873792
 REF_RPN_HEAD_PARAMS = 606765
 REF_RCNN_HEAD_PARAMS = 15680967
 
+from . import pytestmark
 
 def _input_config(is_training: bool, batch_size: int, image_size: int, output_stride: int):
     cfg = DetectionInput.default_config().set(name="test", is_training=is_training)

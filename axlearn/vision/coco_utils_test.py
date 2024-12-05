@@ -9,6 +9,7 @@ from absl.testing import absltest, parameterized
 
 from axlearn.vision import coco_utils
 
+from . import pytestmark
 
 class CocoToolsTest(parameterized.TestCase, tf.test.TestCase):
     """Tests COCO utils."""

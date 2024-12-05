@@ -20,6 +20,7 @@ _tokenizers_dir = os.path.join(os.path.dirname(__file__), "../../../data/tokeniz
 # Easier to test with than librispeech 1k vocab, since it treats many test inputs as UNK.
 _bpe_vocab_file = os.path.join(_tokenizers_dir, "sentencepiece", "bpe_32k_c4.model")
 
+from . import pytestmark
 
 class ConfigTest(TestCase):
     """Tests configs."""

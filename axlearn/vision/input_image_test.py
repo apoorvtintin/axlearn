@@ -19,6 +19,7 @@ from axlearn.vision.input_image import (
     random_erasing,
 )
 
+from . import pytestmark
 
 def _count_batches(dataset, max_batches=100):
     n = 0

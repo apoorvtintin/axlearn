@@ -23,6 +23,7 @@ from axlearn.vision.window_attention import (
     window_unpartition_with_window_size,
 )
 
+from . import pytestmark
 
 def window_partition_torch(x, window_size):
     """Partition into non-overlapping windows with padding if needed.

@@ -20,6 +20,7 @@ from absl import logging
 from absl.testing import absltest, parameterized
 from jax.experimental import mesh_utils
 from jax.experimental.pjit import pjit
+import pytest
 
 from axlearn.common import layers, test_utils, utils
 from axlearn.common.base_model import BaseModel
@@ -61,6 +62,8 @@ X_DIM = 4
 Y_DIM = 8
 NUM_BATCHES = 3
 
+
+pytestmark = pytest.mark.inference
 
 def _build_input(
     global_batch_size: int, *, data_partition: DataPartitionType, include_str_key: bool = False

@@ -10,6 +10,7 @@ from axlearn.common.test_utils import TestCase
 from axlearn.experiments.vision.resnet.common import learner_config, model_config
 from axlearn.vision.resnet import ResNet
 
+from . import pytestmark
 
 class ConfigTest(TestCase):
     """Tests configs."""

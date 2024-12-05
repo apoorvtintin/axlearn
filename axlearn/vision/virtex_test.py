@@ -15,6 +15,7 @@ from axlearn.common.decoding import BeamSearchOutputs
 from axlearn.common.module import functional as F
 from axlearn.vision.virtex import VirTexModel
 
+from . import pytestmark
 
 def generate_sample_captioning_inputs(
     batch_size: int = 2,

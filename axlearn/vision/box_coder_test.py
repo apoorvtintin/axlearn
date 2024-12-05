@@ -7,6 +7,7 @@ from absl.testing import absltest, parameterized
 
 from axlearn.vision import box_coder
 
+from . import pytestmark
 
 # pylint: disable=no-self-use
 class BoxCoderTest(parameterized.TestCase, absltest.TestCase):

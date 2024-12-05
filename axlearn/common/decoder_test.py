@@ -16,6 +16,7 @@ from absl import logging
 from absl.testing import absltest, parameterized
 from jax.experimental import checkify, mesh_utils
 from jax.sharding import Mesh
+import pytest
 
 from axlearn.common import causal_lm, decoding, logit_modifiers, utils
 from axlearn.common.attention import (
@@ -36,6 +37,9 @@ from axlearn.common.flash_attention.layer import FlashAttention
 from axlearn.common.layers import set_bias_recursively
 from axlearn.common.module import functional
 from axlearn.common.test_utils import TestCase, assert_allclose
+
+
+pytestmark = pytest.mark.inference
 
 
 def _enable_causal_attention(cfg: Decoder.Config) -> Decoder.Config:

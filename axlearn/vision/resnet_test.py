@@ -13,6 +13,7 @@ from axlearn.common.module import functional as F
 from axlearn.vision import resnet
 from axlearn.vision.resnet import ResNet
 
+from . import pytestmark
 
 def get_resnet_cfg_model(model_depth):
     if model_depth == 18:

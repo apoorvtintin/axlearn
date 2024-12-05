@@ -36,6 +36,8 @@ from axlearn.common.rnn import BaseRNNCell, IdentityCell, LSTMCell
 from axlearn.common.test_utils import TestCase, assert_allclose
 from axlearn.common.utils import Nested, NestedTensor, Tensor, shapes
 
+from . import pytestmark
+
 _NEG_INF = -1.0e7
 
 

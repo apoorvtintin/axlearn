@@ -8,6 +8,7 @@ from absl.testing import absltest
 from axlearn.common.module import functional as F
 from axlearn.vision import rpn_sampler, similarity_ops
 
+from . import pytestmark
 
 def boxes_close_as_set(actual_boxes, expected_boxes):
     p_iou = similarity_ops.pairwise_iou(boxes_a=actual_boxes, boxes_b=expected_boxes)

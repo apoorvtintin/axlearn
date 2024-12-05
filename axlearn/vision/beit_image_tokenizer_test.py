@@ -12,6 +12,7 @@ from axlearn.vision.beit_image_tokenizer import (
     set_beit_image_tokenizer_encoder_config,
 )
 
+from . import pytestmark
 
 # TODO (bwzhang@) add reference implementation comparison.
 class BEITImageQuantizerTest(TestCase):

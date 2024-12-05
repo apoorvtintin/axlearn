@@ -23,6 +23,7 @@ from axlearn.vision.retinanet import (
     set_retinanet_config,
 )
 
+from . import pytestmark
 
 class RetinaNetHeadTest(parameterized.TestCase):
     @parameterized.product(

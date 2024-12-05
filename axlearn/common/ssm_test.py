@@ -26,6 +26,7 @@ import torch
 from absl.testing import parameterized
 from transformers.activations import ACT2FN
 from transformers.configuration_utils import PretrainedConfig
+import pytest
 
 from axlearn.common.attention import make_causal_biases
 from axlearn.common.config import InstantiableConfig
@@ -382,6 +383,7 @@ class MambaMixerLayerTest(TestCase):
         self.assertEqual(layer_outputs.data.dtype, dtype)
 
     @parameterized.parameters(jnp.float32, jnp.bfloat16)
+    @pytest.mark.inference
     def test_extend_step(self, dtype: jnp.dtype):
         model_dim = 4
         state_dim = 16
@@ -436,6 +438,7 @@ class MambaMixerLayerTest(TestCase):
         assert_allclose(decoder_output_transposed, forward_outputs.data, atol=1e-6)
 
     @parameterized.parameters(jnp.float32, jnp.bfloat16)
+    @pytest.mark.inference
     def test_prefill_states(self, dtype: jnp.dtype):
         model_dim = 4
         state_dim = 16
@@ -564,7 +567,7 @@ def _test_extend_step(layer_cfg: InstantiableConfig, *, model_dim: int, dtype: j
     atol = 1e-6
     assert_allclose(decoder_output_transposed, forward_outputs.data, atol=atol)
 
-
+@pytest.mark.inference
 def _test_prefill_states(layer_cfg: InstantiableConfig, *, model_dim: int, dtype: jnp.dtype):
     """Tests prefill for composite layers."""
     layer = layer_cfg.set(name="test").instantiate(parent=None)
@@ -681,6 +684,7 @@ class MambaBlockTest(TestCase):
         block_klass=(MambaBlock, JambaMambaBlock),
         dtype=(jnp.float32, jnp.bfloat16),
     )
+    @pytest.mark.inference
     def test_extend_step(self, block_klass: MambaBlock, dtype: jnp.dtype):
         model_dim = 8
         state_dim = 16
@@ -701,6 +705,7 @@ class MambaBlockTest(TestCase):
         block_klass=(MambaBlock, JambaMambaBlock),
         dtype=(jnp.float32, jnp.bfloat16),
     )
+    @pytest.mark.inference
     def test_prefill(self, block_klass: MambaBlock, dtype: jnp.dtype):
         model_dim = 8
         state_dim = 16
@@ -805,6 +810,7 @@ class StackedMambaTest(TestCase):
         block_klass=(MambaBlock, JambaMambaBlock),
         dtype=(jnp.float32, jnp.bfloat16),
     )
+    @pytest.mark.inference
     def test_extend_step(self, block_klass: MambaBlock, dtype: jnp.dtype):
         model_dim = 16
         state_dim = 16
@@ -828,6 +834,7 @@ class StackedMambaTest(TestCase):
         block_klass=(MambaBlock, JambaMambaBlock),
         dtype=(jnp.float32, jnp.bfloat16),
     )
+    @pytest.mark.inference
     def test_prefill(self, block_klass: MambaBlock, dtype: jnp.dtype):
         model_dim = 16
         state_dim = 16
@@ -896,6 +903,7 @@ class StackedMixedSSMTransformerTest(TestCase):
         assert_allclose(x, stacked_outputs.data)
 
     @parameterized.parameters(jnp.float32, jnp.bfloat16)
+    @pytest.mark.inference
     def test_extend_step(self, dtype: jnp.dtype):
         model_dim = 16
         state_dim = 16
@@ -920,6 +928,7 @@ class StackedMixedSSMTransformerTest(TestCase):
         _test_extend_step(cfg, model_dim=model_dim, dtype=dtype)
 
     @parameterized.parameters(jnp.float32, jnp.bfloat16)
+    @pytest.mark.inference
     def test_prefill(self, dtype: jnp.dtype):
         model_dim = 16
         state_dim = 16

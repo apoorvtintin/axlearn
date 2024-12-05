@@ -16,6 +16,7 @@ from absl.testing import parameterized
 
 from axlearn.vision import augment
 
+from . import pytestmark
 
 def get_dtype_test_cases():
     return [

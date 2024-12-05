@@ -23,6 +23,7 @@ from axlearn.common.module import functional as F
 from axlearn.common.test_utils import TestCase
 from axlearn.common.utils import Tensor
 
+from . import pytestmark
 
 def _model_config(decoder_cfg: BaseASRDecoderModel.Config) -> ASRModel.Config:
     subsampled_dim, encoder_dim, vocab_size = 12, 36, 16

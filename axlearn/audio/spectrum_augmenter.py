@@ -20,6 +20,7 @@ from axlearn.common.config import config_class
 from axlearn.common.module import Module
 from axlearn.common.utils import Tensor
 
+from . import pytestmark
 
 class MaskSampler(BaseLayer):
     """A layer to generate masks given input lengths.

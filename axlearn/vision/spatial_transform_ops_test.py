@@ -7,6 +7,7 @@ from absl.testing import absltest
 
 from axlearn.vision import spatial_transform_ops
 
+from . import pytestmark
 
 # pylint: disable=no-self-use
 class BoxGridCoordinatesTest(absltest.TestCase):

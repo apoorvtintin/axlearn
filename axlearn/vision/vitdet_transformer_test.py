@@ -13,6 +13,7 @@ from axlearn.common.utils import as_tensor
 from axlearn.common.vision_transformer import VisionTransformer
 from axlearn.vision.vitdet_transformer import build_vitdet_model_config
 
+from . import pytestmark
 
 # pylint: disable=no-self-use
 class ViTDetTransformerTest(TestCase):

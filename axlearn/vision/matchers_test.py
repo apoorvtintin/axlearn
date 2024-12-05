@@ -6,6 +6,7 @@ from absl.testing import absltest, parameterized
 
 from axlearn.vision import matchers
 
+from . import pytestmark
 
 # pylint: disable=no-self-use
 class ArgmaxMatcherTest(absltest.TestCase):

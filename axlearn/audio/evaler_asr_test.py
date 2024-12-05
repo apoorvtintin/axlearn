@@ -39,6 +39,7 @@ _32K_VOCAB_FILE = os.path.join(
     "../data/tokenizers/sentencepiece/bpe_32k_c4.model",
 )
 
+from . import pytestmark
 
 class _DummyAsrModel(BaseModel):
     """A dummy model which implements beam_search_decode method."""

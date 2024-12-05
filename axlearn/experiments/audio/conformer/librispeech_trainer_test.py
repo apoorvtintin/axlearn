@@ -5,6 +5,7 @@
 from axlearn.common import test_utils
 from axlearn.experiments.audio.conformer import librispeech_trainer
 
+from . import pytestmark
 
 class LibriSpeechTrainerTest(test_utils.TrainerConfigTestCase):
     """Tests LibriSpeech trainer."""

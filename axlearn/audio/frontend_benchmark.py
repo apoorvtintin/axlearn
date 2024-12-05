@@ -26,6 +26,7 @@ _BENCHMARK_CONFIGS = {
     ),
 }
 
+from . import pytestmark
 
 def _time_call(fn: Callable, *, num_iters: int = 5) -> float:
     """Times average execution time for fn call over num_iters after warmup."""

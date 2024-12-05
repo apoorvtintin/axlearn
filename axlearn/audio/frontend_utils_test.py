@@ -37,6 +37,7 @@ from axlearn.audio.test_utils import fake_audio
 from axlearn.common.test_utils import TestCase, assert_allclose
 from axlearn.common.utils import as_tensor
 
+from . import pytestmark
 
 def _magnitude_spectrogram_from_audio(x, fft_size):
     return magnitude_spectrogram(jnp.fft.fft(x, n=fft_size), dtype=x.dtype)

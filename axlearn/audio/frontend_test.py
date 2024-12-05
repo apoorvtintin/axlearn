@@ -34,6 +34,7 @@ from axlearn.common.config import config_for_function
 from axlearn.common.module import functional as F
 from axlearn.common.utils import Tensor
 
+from . import pytestmark
 
 class LogMelFrontendTest(parameterized.TestCase, tf.test.TestCase):
     """Tests LogMelFrontend."""

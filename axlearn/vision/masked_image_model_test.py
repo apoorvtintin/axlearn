@@ -17,6 +17,7 @@ from axlearn.vision import beit_image_tokenizer, feature_tokenizer, mask_generat
 from axlearn.vision.clip import set_vision_encoder_config
 from axlearn.vision.masked_image_model import MaskedImageModel
 
+from . import pytestmark
 
 class FakeTokenizer(BaseLayer):
     """A dummy tokenizer."""

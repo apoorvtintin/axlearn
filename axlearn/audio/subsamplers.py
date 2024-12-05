@@ -11,6 +11,7 @@ from axlearn.common.layers import BaseNormalizationLayer, Conv2DWith1DPadding, g
 from axlearn.common.module import Module
 from axlearn.common.utils import Tensor
 
+from . import pytestmark
 
 class ConvSubSampler(BaseLayer):
     """Subsamples the speech by convolution.

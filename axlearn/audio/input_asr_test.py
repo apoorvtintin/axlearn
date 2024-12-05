@@ -18,6 +18,7 @@ from axlearn.common.test_utils import TestCase
 
 tokenizers_dir = os.path.join(os.path.dirname(__file__), "../data/tokenizers/sentencepiece")
 
+from . import pytestmark
 
 class SpeechInputTest(TestCase, tf.test.TestCase):
     """Tests speech input processing."""

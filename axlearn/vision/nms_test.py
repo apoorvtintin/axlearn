@@ -7,6 +7,7 @@ from absl.testing import absltest, parameterized
 
 from axlearn.vision import nms
 
+from . import pytestmark
 
 class NMSTest(parameterized.TestCase, tf.test.TestCase):
     def test_nms(self):

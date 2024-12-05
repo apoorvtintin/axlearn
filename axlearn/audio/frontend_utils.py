@@ -33,6 +33,7 @@ class FrequencyScale(enum.Enum):
     # Mel scale (using natural log).
     MEL_LN = 0
 
+from . import pytestmark
 
 def hertz_to_warped_scale(freq: ArrayLike, *, freq_scale: FrequencyScale) -> ArrayLike:
     """Converts frequencies in Hz to the target frequency scale.

@@ -12,6 +12,7 @@ import torch
 import torch.nn.functional as torchF
 from absl.testing import absltest, parameterized
 from einops import rearrange
+import pytest
 
 from axlearn.common import utils
 from axlearn.common.attention import FusedQKVLinear, MultiheadOutputLinear, RoFormerQKVLinear
@@ -196,6 +197,7 @@ class LoraFusedQKVLinearTest(TestCase):
             ),
         ),
     )
+    @pytest.mark.inference
     def test_extend_step(self, layer):
         model_dim = 8
         num_heads = 2
@@ -266,6 +268,7 @@ class LoraFusedQKVLinearTest(TestCase):
             atol=1e-6,
         )
 
+    @pytest.mark.inference
     def test_prefill_states(self):
         model_dim = 6
         num_heads = 2

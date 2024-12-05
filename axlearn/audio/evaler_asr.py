@@ -31,6 +31,7 @@ from axlearn.common.metrics import WeightedScalar
 from axlearn.common.module import Module
 from axlearn.common.utils import Nested, Tensor, replicate_to_local_data
 
+from . import pytestmark
 
 @dataclass
 class WordErrors:

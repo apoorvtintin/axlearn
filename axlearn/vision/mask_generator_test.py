@@ -6,6 +6,7 @@ from absl.testing import absltest, parameterized
 
 from axlearn.vision import mask_generator
 
+from . import pytestmark
 
 class MaskGeneratorTest(parameterized.TestCase):
     """Tests MaskingGenerator."""

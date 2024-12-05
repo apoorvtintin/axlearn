@@ -6,6 +6,7 @@ from absl.testing import absltest, parameterized
 
 from axlearn.vision import anchor, matchers
 
+from . import pytestmark
 
 # pylint: disable=no-self-use
 class AnchorLabelerTest(parameterized.TestCase, absltest.TestCase):

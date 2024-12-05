@@ -29,6 +29,7 @@ EOS_TOKEN_ID = 49407
 PAD_TOKEN_ID = 49408
 VOCAB_SIZE = 49409
 
+from . import pytestmark
 
 def generate_random_tokenized_text(*, batch_size, max_seq_len):
     # Generate a random text.

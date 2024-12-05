@@ -7,6 +7,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import absltest, parameterized
+import pytest
 
 from axlearn.common.attention import (
     NEG_INF,
@@ -98,6 +99,7 @@ class ModelTest(parameterized.TestCase):
             + (num_ffn - 1) * num_dec_layers * count_model_params(ffn_params),
         )
 
+    @pytest.mark.inference
     def test_transformer_extend_step(self):
         batch_size, src_len, tgt_len = 10, 4, 6
         num_dec_layers, model_dim, num_heads = 3, 16, 4
@@ -203,6 +205,7 @@ class ModelTest(parameterized.TestCase):
         )
 
     @parameterized.parameters(StackedTransformerLayer, RepeatedTransformerLayer)
+    @pytest.mark.inference
     # pylint: disable-next=too-many-statements
     def test_prefill_states(self, transformer_type):
         batch_size, src_len, tgt_len = 10, 4, 6
@@ -360,6 +363,7 @@ class ModelTest(parameterized.TestCase):
         is_training=(False, True),
         num_modalities=(2, 3),
     )
+    @pytest.mark.multimodal
     def test_multiway_transformer(self, is_training, num_modalities):
         batch_size = 2
         output_dim = 32
@@ -402,6 +406,7 @@ class ModelTest(parameterized.TestCase):
             self.assertEqual(embeddings.shape, (batch_size, output_dim))
 
     @parameterized.parameters(0, 118)
+    @pytest.mark.multimodal
     def test_model_forward_with_masked_pos(self, num_masking_patches):
         batch_size = 2
         output_dim = 32

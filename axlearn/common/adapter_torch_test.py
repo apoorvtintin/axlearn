@@ -12,6 +12,7 @@ import numpy as np
 import torch
 from absl.testing import absltest, parameterized
 from jax import numpy as jnp
+import pytest
 
 from axlearn.common.adapter_torch import (
     NEG_INF,
@@ -912,6 +913,7 @@ class TransformerEmbeddingsTest(TestCase):
 
 
 class DecoderTest(TestCase):
+    @pytest.mark.inference
     def test_decoder_inference(self):
         vocab_size = 13
         emb_dim = 8

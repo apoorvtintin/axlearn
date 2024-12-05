@@ -11,6 +11,7 @@ from axlearn.common.utils import as_tensor
 from axlearn.vision import feature_tokenizer
 from axlearn.vision.clip import set_vision_encoder_config
 
+from . import pytestmark
 
 class ModelTest(TestCase):
     """Tests CLIPFeatureTokenizer."""

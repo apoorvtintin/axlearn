@@ -40,6 +40,7 @@ from axlearn.common.config import (
 from axlearn.common.module import Module, nowrap
 from axlearn.common.utils import Tensor
 
+from . import pytestmark
 
 class StageFn(Protocol):
     """A frontend "stage" is a callable that takes a Tensor and emits a Tensor."""

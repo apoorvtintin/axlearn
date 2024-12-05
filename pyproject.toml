@@ -7,7 +7,7 @@ name = "axlearn"
 version = "0.1.4"
 description = "AXLearn"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 
 # Production dependencies.
 # Minimal requirments for axlearn/common/config.py.
@@ -24,8 +24,8 @@ core = [
     "chex==0.1.86",  # chex 0.1.86 is required for jax 0.4.25.
     "einops==0.8.0",
     "importlab==0.7",  # breaks pytype on 0.8
-    "jax==0.4.33",
-    "jaxlib==0.4.33",
+    "jax==0.4.30",
+    "jaxlib==0.4.30",
     "nltk==3.7",  # for text preprocessing
     "optax==0.1.7",  # optimizers (0.1.0 has known bugs).
     "portpicker",
@@ -35,12 +35,12 @@ core = [
     "tensorflow==2.16.1",
     "tensorflow-datasets>=4.9.2",
     "tensorflow-io>=0.37.1",  # for tensorflow-2.16. Note that 0.37.0 results in "pure virtual method called".
-    "tensorflow_text==2.16.1; platform_machine == 'x86_64'", # implied by seqio, but also used directly for text processing
+    #"tensorflow_text==2.16.1; platform_machine == 'x86_64'", # implied by seqio, but also used directly for text processing
     "tensorstore>=0.1.63",  # used for supporting GDA checkpoints
     "toml",  # for config management
     "typing-extensions==4.11.0",
     "scipy==1.12.0",  # to avoid "module 'scipy.linalg' has no attribute 'tril'"
-    "seqio==0.0.18",  # used for inputs
+    "seqio",  # used for inputs
     "aqtp==0.8.1", # Updated from 0.4.0; compatible with Python 3.10
     "flax==0.8.5", # for AQT, param converter and adapter.
     "prefixed==0.7.1", # For formatting file sizes, param counts, etc.
@@ -185,6 +185,13 @@ markers = [
     "golden_init: golden init tests.",
     "golden_regularizer: golden regularizer scale tests.",
     "golden_param_update: golden param update scale tests.",
+    "inference: inference test that is not vision, moe, multimodal or audio",
+    "vision: vision test",
+    "moe: MoE test",
+    "multimodal: multimodal test",
+    "audio: audio test, contains speech for now (have to check if it's only librispeech)",
+    "infra: experimentation infrastructure",
+    "API: LLM APIs",
 ]
 testpaths = "."
 junit_family="xunit2"

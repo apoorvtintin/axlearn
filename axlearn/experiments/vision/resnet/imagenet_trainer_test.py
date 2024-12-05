@@ -5,6 +5,7 @@
 from axlearn.common import test_utils
 from axlearn.experiments.vision.resnet import imagenet_trainer
 
+from . import pytestmark
 
 class ImageNetTrainerTest(test_utils.TrainerConfigTestCase):
     """Tests ImageNet trainer."""

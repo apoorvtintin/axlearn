@@ -7,6 +7,7 @@ from absl.testing import absltest, parameterized
 
 from axlearn.vision.metrics_vqa import _get_normalizer, vqa_accuracy_score
 
+from . import pytestmark
 
 class TestMetricsVQA(parameterized.TestCase):
     """Tests metric utils."""

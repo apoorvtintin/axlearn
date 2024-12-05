@@ -23,6 +23,7 @@ import math
 from collections.abc import Sequence
 from itertools import combinations
 from typing import Any, Callable, Optional, Union
+import pytest
 
 import jax
 import numpy as np
@@ -1441,6 +1442,7 @@ class QKVLinearTest(TestCase):
         (attention.FusedGroupedQKVLinear, 3),
         (attention.RoFormerQKVLinear, 2),
     )
+    @pytest.mark.inference
     def test_repeated_extend_step(self, layer_cls: type[attention.BaseQKVLinear], extend_step_len):
         """Tests that calling QKVLinear.extend_step() multiple times with the
         same time_step results in the same output."""
@@ -2502,6 +2504,7 @@ class MultiheadAttentionTest(TestCase):
         input_linear=(QKVLinear, RoFormerQKVLinear, QLinear),
         extend_step_len=(1, 4),
     )
+    @pytest.mark.inference
     def test_extend_step(
         self,
         dtype: jnp.dtype,
@@ -2540,6 +2543,7 @@ class MultiheadAttentionTest(TestCase):
         bias=(True, False),
         extend_step_len=(1, 4),
     )
+    @pytest.mark.inference
     def test_gqa_extend_step(
         self,
         dtype: jnp.dtype,
@@ -2718,6 +2722,7 @@ class MultiheadAttentionTest(TestCase):
         bias=(True, False),
         input_linear=(attention.QKVLinear, attention.RoFormerQKVLinear),
     )
+    @pytest.mark.inference
     def test_prefill_states(
         self,
         dtype: jnp.dtype,
@@ -2749,6 +2754,7 @@ class MultiheadAttentionTest(TestCase):
         input_linear=(attention.GroupedQKVLinear, attention.FusedGroupedQKVLinear),
         bias=(True, False),
     )
+    @pytest.mark.inference
     def test_gqa_prefill_states(
         self,
         dtype: jnp.dtype,
@@ -3239,6 +3245,7 @@ class TransformerXLTest(TestCase):
 
 class TransformerAttentionLayerTest(TestCase):
     @parameterized.parameters([False, True])
+    @pytest.mark.inference
     def test_forward_vs_extend_step(self, with_source: bool):
         init_prng, target_prng, source_prng = jax.random.split(jax.random.PRNGKey(0), 3)
 
@@ -3667,6 +3674,7 @@ class TransformerTest(BaseTransformerTest):
         ref = hf_roberta.RobertaLayer(roberta_config)
         self._compare_against_roberta_layer(ref, layer)
 
+    @pytest.mark.inference
     def test_decoding(self):
         model_dim, num_heads = 6, 2
         cfg = TransformerLayer.default_config().set(input_dim=model_dim)
@@ -3947,6 +3955,7 @@ class StackedTransformerTest(BaseTransformerTest):
         # Also tests stack-of-stacks and repeat-of-stacks.
         layer_type=[TransformerLayer, StackedTransformerLayer],
     )
+    @pytest.mark.inference
     def test_transformer_extend_step(self, transformer_type, layer_type):
         batch_size, src_len, tgt_len = 10, 4, 6
         num_dec_layers, model_dim, num_heads = 3, 16, 4
@@ -4074,6 +4083,7 @@ class StackedTransformerTest(BaseTransformerTest):
         # Also tests stack-of-stacks and repeat-of-stacks.
         layer_type=[TransformerLayer, StackedTransformerLayer],
     )
+    @pytest.mark.inference
     # pylint: disable-next=too-many-statements
     def test_transformer_prefill_states(self, transformer_type, layer_type):
         batch_size, src_len, tgt_len = 10, 4, 6
@@ -4594,6 +4604,7 @@ class StackedTransformerTest(BaseTransformerTest):
             self.assertNestedAllClose(all_updates[0], all_updates[1])
 
     @parameterized.parameters(StackedTransformerLayer, RepeatedTransformerLayer)
+    @pytest.mark.inference
     def test_stacked_decoding(self, stack_cls):
         model_dim, num_heads = 6, 2
         cfg = stack_cls.default_config().set(num_layers=5, input_dim=model_dim)
@@ -4607,6 +4618,7 @@ class StackedTransformerTest(BaseTransformerTest):
         outer_stack_cls=(StackedTransformerLayer, RepeatedTransformerLayer),
         inner_stack_cls=(StackedTransformerLayer, RepeatedTransformerLayer),
     )
+    @pytest.mark.inference
     def test_nested_stacked_decoding(self, outer_stack_cls, inner_stack_cls):
         model_dim, num_heads = 6, 2
         cfg = outer_stack_cls.default_config().set(num_layers=2, input_dim=model_dim)

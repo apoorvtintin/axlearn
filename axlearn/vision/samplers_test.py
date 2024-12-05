@@ -7,6 +7,7 @@ from absl.testing import absltest
 
 from axlearn.vision import samplers
 
+from . import pytestmark
 
 # pylint: disable=no-self-use
 class SampleTest(absltest.TestCase):

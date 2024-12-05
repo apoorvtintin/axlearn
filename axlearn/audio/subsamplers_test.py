@@ -16,6 +16,7 @@ from axlearn.common.layers import BatchNorm
 from axlearn.common.module import functional as F
 from axlearn.common.test_utils import TestCase
 
+from . import pytestmark
 
 class ConvSubSamplerTest(TestCase):
     """Tests ConvSubSampler."""

@@ -27,6 +27,7 @@ from axlearn.vision.mobilenets import (
     named_model_configs,
 )
 
+from . import pytestmark
 
 class MobileNetsTest(parameterized.TestCase):
     """Tests MobileNets."""

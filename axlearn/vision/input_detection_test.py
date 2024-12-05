@@ -15,6 +15,7 @@ from axlearn.vision.input_detection import (
     resize_and_crop_image,
 )
 
+from . import pytestmark
 
 class DetectionInputTest(parameterized.TestCase, tf.test.TestCase):
     """Tests DetectionInput."""

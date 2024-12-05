@@ -14,6 +14,7 @@ from axlearn.common.test_utils import assert_allclose
 from axlearn.vision.clip import CLIPFusionNetwork
 from axlearn.vision.cyclip import CyCLIPFusionNetwork
 
+from . import pytestmark
 
 class TestCyCLIPFusionNetwork(parameterized.TestCase):
     """Tests CyCLIPFusionNetwork."""

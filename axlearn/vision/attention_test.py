@@ -13,6 +13,7 @@ from axlearn.common.param_converter import as_torch_tensor
 from axlearn.common.test_utils import TestCase, assert_allclose
 from axlearn.vision.attention import WindowedAttention, WindowedSelfAttentionLayer, get_rel_pos_emb
 
+from . import pytestmark
 
 def get_rel_pos_torch(q_size, k_size, rel_pos):
     """

@@ -18,6 +18,7 @@ import jax.numpy as jnp
 import numpy as np
 from absl.testing import absltest, parameterized
 from jax.experimental import mesh_utils
+import pytest
 
 from axlearn.common.attention import (
     RepeatedTransformerLayer,
@@ -38,6 +39,7 @@ from axlearn.common.module import functional as F
 from axlearn.common.test_utils import assert_allclose
 from axlearn.common.utils import get_recursively, set_recursively, shapes
 
+pytestmark = pytest.mark.moe
 
 # pylint: disable=no-self-use,protected-access
 class TransformerFeedForwardMoETest(parameterized.TestCase):

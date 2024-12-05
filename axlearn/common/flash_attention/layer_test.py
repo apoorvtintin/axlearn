@@ -19,6 +19,7 @@ import pytest
 from absl.testing import parameterized
 from jax.experimental import mesh_utils
 from jax.sharding import Mesh
+import pytest
 
 from axlearn.common.attention import (
     GroupedQueryAttention,
@@ -561,6 +562,7 @@ class TestFlashAttention(TestCase):
         jax.clear_backends()
 
     @parameterized.product(_TEST_CONFIGS, causal=[True], sliding_window_size=[None, 4])
+    @pytest.mark.inference
     def test_extend_step(
         self,
         batch,

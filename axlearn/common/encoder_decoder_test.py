@@ -14,6 +14,7 @@ from jax import numpy as jnp
 from transformers import BertConfig, BertModel, EncoderDecoderConfig
 from transformers import EncoderDecoderModel as HFEncoderDecoderModel
 from transformers import GPT2Config, GPT2LMHeadModel
+import pytest
 
 from axlearn.common import decoding, utils
 from axlearn.common.attention import (
@@ -37,6 +38,9 @@ from axlearn.common.test_utils import TestCase, assert_allclose, dummy_padding_m
 from axlearn.common.torch_utils import parameters_from_torch_layer
 
 testdata_dir = os.path.join(os.path.dirname(__file__), "../experiments/testdata")
+
+
+pytestmark = pytest.mark.inference
 
 
 def set_decoder_cross_attention_config(

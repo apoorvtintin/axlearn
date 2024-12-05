@@ -12,6 +12,7 @@ from axlearn.common.module import functional as F
 from axlearn.common.test_utils import TestCase
 from axlearn.vision.mobilenets_blocks import ConvBnAct, MobileBlock, MobileBlockType
 
+from . import pytestmark
 
 # pylint: disable=too-many-public-methods
 class MobileNetsBlocksTest(TestCase, tf.test.TestCase):

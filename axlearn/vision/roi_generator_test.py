@@ -10,6 +10,7 @@ from axlearn.common.module import functional as F
 from axlearn.vision import anchor
 from axlearn.vision.roi_generator import RoIGenerator
 
+from . import pytestmark
 
 class RoIGeneratorTest(absltest.TestCase):
     """Tests RoIGenerator."""

@@ -39,6 +39,7 @@ from axlearn.common.rnn import BaseRNNCell, LSTMCell
 from axlearn.common.transducer import Transducer, log_probs_from_blank_and_tokens
 from axlearn.common.utils import Nested, Tensor, vectorized_tree_map
 
+from . import pytestmark
 
 def _is_valid_ctc_seq(
     *, paddings: Tensor, target_labels: Tensor, target_paddings: Tensor

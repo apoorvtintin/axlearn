@@ -17,6 +17,7 @@ from axlearn.common.utils import as_tensor
 from axlearn.vision import clip
 from axlearn.vision.param_converter import as_torch_tensor, axlearn_to_torch
 
+from . import pytestmark
 
 class HFClipTest(BaseParamConverterTest):
     def setUp(self):

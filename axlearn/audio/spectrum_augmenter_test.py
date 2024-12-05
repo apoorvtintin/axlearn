@@ -17,6 +17,7 @@ from axlearn.common.module import functional as F
 from axlearn.common.test_utils import TestCase, dummy_padding_mask
 from axlearn.common.utils import Tensor
 
+from . import pytestmark
 
 class MaskSamplerTest(TestCase):
     """Tests MaskSampler."""

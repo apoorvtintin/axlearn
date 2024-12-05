@@ -14,6 +14,7 @@ from axlearn.common.module import functional as F
 from axlearn.common.test_utils import TestCase
 from axlearn.common.utils import Tensor, shapes
 
+from . import pytestmark
 
 def _fake_audio_pairs(*, prng_key: Tensor, batch_size: int, seq_len: int):
     # Produce inputs s.t. inputs[:batch_size//2] and inputs[batch_size//2:] have the same values

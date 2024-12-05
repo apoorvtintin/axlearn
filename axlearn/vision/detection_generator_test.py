@@ -12,6 +12,7 @@ from absl.testing import absltest, parameterized
 from axlearn.common.module import functional as F
 from axlearn.vision import anchor, detection_generator
 
+from . import pytestmark
 
 class SelectTopKScoresTest(parameterized.TestCase, tf.test.TestCase):
     """Tests select_top_k_scores."""

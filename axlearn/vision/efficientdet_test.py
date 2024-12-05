@@ -16,6 +16,7 @@ from axlearn.vision.efficientdet import (
 )
 from axlearn.vision.retinanet import RetinaNetModel
 
+from . import pytestmark
 
 class PredictionHeadTest(parameterized.TestCase):
     """Tests PredictionHead."""

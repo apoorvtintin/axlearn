@@ -8,6 +8,7 @@ from absl.testing import absltest
 from axlearn.common.module import functional as F
 from axlearn.vision import rcnn_losses
 
+from . import pytestmark
 
 # pylint: disable=no-self-use
 class RPNMetricTest(absltest.TestCase):

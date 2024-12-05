@@ -7,6 +7,7 @@ import jax.numpy as jnp
 
 from axlearn.common.utils import Tensor
 
+from . import pytestmark
 
 def fake_audio(
     *,

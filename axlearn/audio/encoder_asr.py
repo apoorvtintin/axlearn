@@ -24,6 +24,7 @@ from axlearn.common.layers import Dropout, Linear
 from axlearn.common.module import Module
 from axlearn.common.utils import Tensor
 
+from . import pytestmark
 
 class SpeechFeatureLayer(BaseLayer):
     """Computes speech features from audio waveform."""
