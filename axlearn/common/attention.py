@@ -2542,6 +2542,7 @@ class TransformerAttentionLayer(BaseLayer):
             atten_state, atten_output = attention_thunk(norm_target)
             atten_output = maybe_shard(atten_output, cfg.postattention_partition_spec)
             data = skip_input + self.stochastic_depth(self.dropout(atten_output.data))
+            data = self._remat_name(data, 'residual_add')
         elif cfg.structure == "postnorm":
             # This is the structure used by the original Transformer, BERT, and RoBERTa.
             atten_state, atten_output = attention_thunk(target)
@@ -2851,6 +2852,7 @@ class TransformerFeedForwardLayer(BaseLayer):
             if cfg.residual_weight != 1:
                 x *= cfg.residual_weight
             x += inputs
+            x=self._remat_name(x, 'mlp_residual')
         elif cfg.structure == "postnorm":
             x = self._linear1_activation(inputs)
             x = _linear2(x)
@@ -4077,7 +4079,7 @@ def build_remat_spec(
         checkpoints = []
         checkpoints.extend([f"{attention_name}.{el}" for el in ['q_proj', 'k_proj', 'v_proj']] + ["input_to_qkvee", "TransformerAttentionLayer.residual_add", "TransformerFeedForwardLayer.mlp_residual"])
         checkpoints.extend([f"{ffn_name}.{el}" for el in ["linear1_0", "linear1_1"]])
-        policy = config_for_function(jax_remat_policies.save_only_these_names).set(names_which_can_be_saved=checkpoints)
+        policy = config_for_function(jax_remat_policies.save_only_these).set(names_which_can_be_saved=checkpoints)
 
     return RematSpec(
         prevent_cse=stack_cfg.klass is StackedTransformerLayer,
