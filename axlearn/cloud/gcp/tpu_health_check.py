@@ -32,6 +32,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Literal, Optional, Union
 
+import pytest
 import tensorflow as tf
 from absl import flags, logging
 
@@ -61,10 +62,9 @@ def _parse_spec_and_check_if_should_skip(
             timeout = float(check_split[1])
             break
     else:
-        logging.info(
-            "Skipping %s slice health check because check spec is %s.", check_type, check_spec
+        pytest.skip(
+            reason=f"Skipping {check_type} slice health check because check spec is {check_spec}.",
         )
-        return None
 
     # These environment variables are set by GKE.
     if "MEGASCALE_NUM_SLICES" not in os.environ or "NODE_NAME" not in os.environ:

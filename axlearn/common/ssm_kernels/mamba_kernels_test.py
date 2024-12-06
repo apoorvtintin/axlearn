@@ -13,8 +13,9 @@ from axlearn.common.ssm_kernels import mamba_kernels
 from axlearn.common.test_utils import TestCase, assert_allclose
 from axlearn.common.utils import Tensor
 
+
 if jax.default_backend() != "tpu":
-    pytest.skip(reason="Incompatible hardware", allow_module_level=True)
+    pytestmark = pytest.mark.skip(reason="Incompatible hardware, TPU only test")
 
 
 # Use higher precision matmuls for testing.
