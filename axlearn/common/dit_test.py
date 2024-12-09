@@ -19,6 +19,7 @@ import torch
 from absl.testing import parameterized
 from timm.models.vision_transformer import Attention, Mlp, PatchEmbed
 from torch import nn
+import pytest
 
 from axlearn.common.attention import NEG_INF
 from axlearn.common.dit import (
@@ -36,6 +37,9 @@ from axlearn.common.test_utils import assert_allclose
 from axlearn.common.torch_utils import parameters_from_torch_layer
 from axlearn.common.utils import as_tensor
 from axlearn.common.vision_transformer import ConvertToSequence
+
+
+pytestmark = pytest.mark.vision
 
 
 class RefTimestepEmbedder(nn.Module):

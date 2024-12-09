@@ -851,6 +851,7 @@ def test_large_margin_loss_returns_accuracy_of_valid():
         (ReductionMethod.SUM, 1e-3),
     ],
 )
+@pytest.mark.vision
 def test_giou_loss_random_input(reduction: ReductionMethod, eps: float):
     batch_size = 8
     num_samples = 1000

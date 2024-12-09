@@ -13,6 +13,7 @@ import torch
 from absl.testing import parameterized
 from transformers import DebertaV2Config, DebertaV2ForSequenceClassification
 from transformers.models.deberta_v2 import modeling_deberta_v2 as hf_deberta_v2
+import pytest
 
 from axlearn.common.attention import (
     BaseStackedTransformerLayer,
@@ -617,7 +618,7 @@ class DeBERTaModelTest(TestCase):
         self.assertNestedAllClose(test_outputs, ref_outputs)
 
     @parameterized.parameters(
-        dict(method="predict"),
+        pytest.param(dict(method="predict"), mark=pytest.mark.inference),
         dict(method="forward"),
     )
     def test_deberta_v2_sequence_classification(self, method: str):

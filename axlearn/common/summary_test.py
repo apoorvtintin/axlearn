@@ -79,6 +79,9 @@ class SummaryTest(TestCase):
         s = dict(a=ImageSummary(img), b=ImageSummary(img))
         self.assertSequenceEqual(flatten_items(s), [("a/_value", img), ("b/_value", img)])
 
+    # not really specific, marking it for now
+    @pytest.mark.vision
+    @pytest.mark.audio
     def test_end_to_end(self):
         """Tests that `ImageSummary` and `AudioSummary` works with `SpmdTrainer` and
         `SpmdEvaler` in an end-to-end fashion.

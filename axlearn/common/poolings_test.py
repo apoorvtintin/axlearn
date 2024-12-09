@@ -8,6 +8,7 @@ import jax
 import jax.random
 from absl.testing import absltest, parameterized
 from jax import numpy as jnp
+import pytest
 
 from axlearn.common import utils
 from axlearn.common.layers import Linear
@@ -22,6 +23,9 @@ from axlearn.common.poolings import (
 )
 from axlearn.common.test_utils import TestCase, assert_allclose
 from axlearn.common.utils import shapes
+
+
+pytestmark = pytest.mark.vision
 
 
 class PoolingTest(TestCase):

@@ -29,6 +29,7 @@ from jax import nn
 from jax import numpy as jnp
 from sklearn.metrics import precision_score as sklearn_precision_score
 from sklearn.metrics import recall_score as sklearn_recall_score
+import pytest
 
 from axlearn.common import layers, module, utils
 from axlearn.common.base_layer import BaseLayer, ParameterSpec
@@ -820,6 +821,7 @@ class LayerTest(TestCase, tf.test.TestCase):
             "num_input_dim_groups": 4,
         },
     )
+    @pytest.mark.vision
     def test_conv2d(
         self,
         window: tuple[int, int],
@@ -895,6 +897,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         self.assertAllEqual(outputs.shape, output_shape)
 
     @parameterized.parameters((1, 1, 1), (1, 2, 1), (2, 1, 2), (3, 1, 3), (3, 2, 5))
+    @pytest.mark.vision
     def test_conv_dilate_window(self, window, dilation, expected):
         effective_window = layers.conv_dilate_window(window=(window,), dilation=(dilation,))[0]
         self.assertEqual(effective_window, expected)
@@ -913,6 +916,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         (10, 3, 1, "CAUSAL", 2, 10),
         (10, 3, 2, "CAUSAL", 2, 5),
     )
+    @pytest.mark.vision
     def test_conv_output_shape(self, in_shape, window, strides, padding, dilation, expected):
         out_shape = layers.conv_output_shape(
             in_shape=(in_shape,),
@@ -943,6 +947,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         ([0, 0, 0, 1, 1, 1], [0, 0], 2, "VALID"),
         ([0, 0, 1, 1, 1, 1], [0, 1], 2, "VALID"),
     )
+    @pytest.mark.vision
     def test_conv_padding(self, input_paddings, expected_paddings, stride: int, padding_cfg: str):
         """Tests conv_output_shape() with SAME and VALID padding cfg."""
         # This test is from lingvo
@@ -973,6 +978,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         (5, 2, "CAUSAL", 2, (7, 1)),
         (5, 3, "CAUSAL", 2, (6, 2)),
     )
+    @pytest.mark.vision
     def test_conv_explicit_padding(
         self, window: int, stride: int, padding: ConvPaddingType, dilation: int, expected
     ):
@@ -993,6 +999,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         (5, 1, "SAME", [0, 0, 0, 0, 1, 1]),
         (5, 2, "SAME", [0, 0, 1]),
     )
+    @pytest.mark.vision
     def test_conv_output_1d_padding_simple(
         self, window: int, stride: int, padding: ConvPaddingType, expected
     ):
@@ -1013,6 +1020,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         ([0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [0, 1, 1]),
         ([0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [0, 0, 1]),
     )
+    @pytest.mark.vision
     def test_conv_output_1d_padding_causal(self, in_paddings, expected):
         """Test the below cases.
 
@@ -1072,6 +1080,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         (5, 2, ((0, 0),), "VALID"),
         (5, 2, ((3, 1),), "CAUSAL"),
     )
+    @pytest.mark.vision
     def test_conv_output_1d_padding_against_str_padding(
         self, window: int, stride: int, padding: ConvPaddingType, ref_padding: ConvPaddingType
     ):
@@ -1101,6 +1110,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         ("VALID", 2, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1], [0]),
         ("CAUSAL", 2, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1], [0, 0, 0, 0, 1]),
     )
+    @pytest.mark.vision
     def test_compute_conv_paddings_with_dilation(
         self, padding: ConvPaddingType, dilation: int, paddings, expected
     ):
@@ -1137,6 +1147,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         (5, "CAUSAL", 4, [0, 0, 0, 1, 1, 1]),
         (5, "CAUSAL", 5, ValueError),
     )
+    @pytest.mark.vision
     def test_conv_output_1d_padding_with_anchor(self, window, padding, anchor, expected_paddings):
         input_paddings = [0, 0, 0, 1, 1, 1]
         try:
@@ -1168,6 +1179,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         ("3x3_S2_CAUSAL", (3, 3), (2, 2), "CAUSAL", None),
         ("3x3_S2_PADDING1", (3, 3), (2, 2), (1, 1), None),
     )
+    @pytest.mark.vision
     def test_conv2d_with_1d_padding(
         self,
         window: tuple[int, int],
@@ -1285,6 +1297,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         ("3_S2_VALID", 3, 2, "VALID", None),
         ("3_S2_CAUSAL", 3, 2, "CAUSAL", None),
     )
+    @pytest.mark.vision
     def test_conv1d_against_conv2d_with_1d_padding(
         self,
         window: int,
@@ -1376,6 +1389,7 @@ class LayerTest(TestCase, tf.test.TestCase):
             "padding": "VALID",
         },
     )
+    @pytest.mark.vision
     def test_conv2d_transpose_against_pytorch(
         self,
         window: tuple[int, int],
@@ -1519,6 +1533,7 @@ class LayerTest(TestCase, tf.test.TestCase):
             "num_input_dim_groups": 4,
         },
     )
+    @pytest.mark.vision
     def test_conv3d(
         self,
         window: tuple[int, int],
@@ -1612,6 +1627,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         ("w4s1d1_CAUSAL", 4, 1, ((3, 0),), None),
         ("w4s1d5_CAUSAL", 4, 1, ((3, 0),), 5),
     )
+    @pytest.mark.vision
     def test_conv1d(
         self,
         window: int,
@@ -1688,6 +1704,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         ("w4s1_SAME", 4, 1, "SAME"),
         ("w4s1_CAUSAL", 4, 1, ((3, 0),)),
     )
+    @pytest.mark.vision
     def test_depthwise_conv1d(
         self,
         window: int,
@@ -1785,6 +1802,7 @@ class LayerTest(TestCase, tf.test.TestCase):
     ]
 
     @parameterized.parameters(*CONVT_EXPLICIT_PADDING_PARAMS)
+    @pytest.mark.vision
     def test_conv_transpose_explicit_padding(self, window, strides, padding, dilation, expected):
         """Tests the cases in conv_transpose_explicit_padding() description."""
         explicit_padding = layers.conv_transpose_explicit_padding(
@@ -1796,6 +1814,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         self.assertAllEqual(explicit_padding[0], expected)
 
     @parameterized.parameters(*CONVT_EXPLICIT_PADDING_PARAMS)
+    @pytest.mark.vision
     def test_conv_transpose_explicit_padding_against_jax(
         self, window, strides, padding, dilation, expected
     ):
@@ -1855,6 +1874,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         (3, 2, "CAUSAL", 2, 8),
         (3, 3, "CAUSAL", 2, 12),
     )
+    @pytest.mark.vision
     def test_conv_transpose_output_shape(self, window, strides, padding, dilation, expected):
         """Tests the cases in conv_transpose_explicit_padding() description."""
         out_shape = layers.conv_transpose_output_shape(
@@ -1889,6 +1909,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         (3, 2, "CAUSAL", 2, [0, 0, 0, 0, 1, 1, 1, 1]),
         (3, 3, "CAUSAL", 2, [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]),
     )
+    @pytest.mark.vision
     def test_compute_conv_transpose_paddings(self, window, strides, padding, dilation, expected):
         """Tests the cases in conv_transpose_explicit_padding() description."""
         in_paddings = jnp.array([0, 0, 1, 1], dtype=jnp.float32)[None, :]
@@ -1905,6 +1926,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         dilation=[1, 2],
         value=[0, 1],
     )
+    @pytest.mark.vision
     def test_compute_conv_transpose_paddings_all0or1(
         self, window, strides, padding, dilation, value
     ):
@@ -1931,6 +1953,7 @@ class LayerTest(TestCase, tf.test.TestCase):
     )
 
     @parameterized.product(**CONVT_PADDINGS_PARAMS, strides=[1, 2, 3])
+    @pytest.mark.vision
     def test_compute_conv_transpose_paddings_with_conv_paddings(
         self, in_paddings, window, strides, padding, dilation
     ):
@@ -1946,6 +1969,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         self.assertNestedEqual(recon_paddings[0], in_paddings[0])
 
     @parameterized.product(**CONVT_PADDINGS_PARAMS)
+    @pytest.mark.vision
     def test_compute_conv_transpose_paddings_against_conv_paddings(
         self, in_paddings, window, padding, dilation
     ):
@@ -2019,6 +2043,7 @@ class LayerTest(TestCase, tf.test.TestCase):
     ]
 
     @parameterized.parameters(*CONVT_PARAMS)
+    @pytest.mark.vision
     def test_conv1d_transpose_simple(self, window, strides, padding, dilation, expected):
         """Tests the cases in conv_transpose_explicit_padding() description."""
         input_dim, output_dim = 1, 1
@@ -2050,6 +2075,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         self.assertNestedEqual(outputs[0, :, 0], expected)
 
     @parameterized.parameters(*CONVT_PARAMS)
+    @pytest.mark.vision
     def test_conv2d_transpose_simple(self, window, strides, padding, dilation, expected):
         """Tests the cases in conv_transpose_explicit_padding() description."""
         window = (window, 1)
@@ -2083,6 +2109,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         self.assertNestedEqual(outputs[0, :, 0, 0], expected)
 
     @parameterized.parameters(*CONVT_PARAMS)
+    @pytest.mark.vision
     def test_conv3d_transpose_simple(self, window, strides, padding, dilation, expected):
         """Tests the cases in conv_transpose_explicit_padding() description."""
         window = (window, 1, 1)
@@ -2116,6 +2143,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         self.assertNestedEqual(outputs[0, :, 0, 0, 0], expected)
 
     @parameterized.product(window=(1, 3, 5), padding=("SAME", "VALID", "CAUSAL"), dilation=(1, 2))
+    @pytest.mark.vision
     def test_conv1d_transpose_against_conv1d(self, window, padding, dilation):
         # Conv1D and Conv1DTranspose are same when window_stride=1
         # (stride of Conv1D) and lhs_dilation=1 (stride of Conv1DTranspose).
@@ -2164,6 +2192,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         assert_allclose(ref_outputs, test_outputs)
 
     @parameterized.product(window=(1, 3, 5), padding=("SAME", "VALID", "CAUSAL"), dilation=(1, 2))
+    @pytest.mark.vision
     def test_conv2d_transpose_against_conv2d(self, window, padding, dilation):
         # Conv2D and Conv2DTranspose are same when window_stride=1
         # (stride of Conv2D) and lhs_dilation=1 (stride of Conv2DTranspose).
@@ -2225,6 +2254,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         assert_allclose(ref_outputs, test_outputs)
 
     @parameterized.product(window=(1, 3, 5), padding=("SAME", "VALID", "CAUSAL"), dilation=(1, 2))
+    @pytest.mark.vision
     def test_conv2d_transpose_against_conv2d_with_paddings(self, window, padding, dilation):
         # Conv2DWith1DPadding and Conv2DTransposeWith1DPadding are same when window_stride=1
         # (stride of Conv2D) and lhs_dilation=1 (stride of Conv2DTranspose).
@@ -2306,6 +2336,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         assert_allclose(ref_paddings, test_paddings)
 
     @parameterized.product(window=(1, 3, 5), padding=("SAME", "VALID", "CAUSAL"), dilation=(1, 2))
+    @pytest.mark.vision
     def test_conv3d_transpose_against_conv3d(self, window, padding, dilation):
         # Conv3D and Conv3DTranspose are same when window_stride=1
         # (stride of Conv3D) and lhs_dilation=1 (stride of Conv3DTranspose).
@@ -2377,6 +2408,7 @@ class LayerTest(TestCase, tf.test.TestCase):
         dilation=(1, 2),
         anchor=(None, 1),
     )
+    @pytest.mark.vision
     def test_conv1d_transpose_against_conv2d_transpose_with_1d_padding(
         self,
         window,
@@ -2852,6 +2884,7 @@ class LayerTest(TestCase, tf.test.TestCase):
                 self.assertEqual(expected_output_length, np.sum(1 - output_paddings, axis=1)[0])
 
     @parameterized.parameters(((0, 1), (0, 0)), ((1, 1), (3, 0)), ((1, 1), (0, 3)))
+    @pytest.mark.audio
     def test_stack_vs_conv2d_output_len_match(self, conv_padding, stack_padding):
         # Note that to get the same output length, we need to pad the sequence differently
         # for convolution and stacking layer.

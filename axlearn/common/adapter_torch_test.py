@@ -1601,6 +1601,7 @@ class CoCaImageStreamEncoderTest(TestCase):
             ("bottleneck", "cascade", "parallel"),
         )
     )
+    @pytest.mark.vision
     def test_coca_image_stream_encoder(
         self, constrastive_pooler_cfg: str, caption_pooler_cfg: str, pooler_mode: str
     ):

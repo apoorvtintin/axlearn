@@ -24,6 +24,8 @@ from axlearn.vision.fpn import (
     bifpn_layer_config,
 )
 
+from . import pytestmark
+
 
 class FPNTest(parameterized.TestCase):
     """Tests FPN."""
