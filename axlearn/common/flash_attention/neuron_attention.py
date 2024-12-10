@@ -13,10 +13,7 @@ from neuronxcc.nki._private_kernels.legacy.attention import flash_attn_bwd, flas
 # enable buffer donation in neuron
 jax._src.interpreters.mlir._platforms_with_donation.append("neuron")
 
-if "LNC" not in os.environ:
-    raise ValueError("LNC environment variable is not set")
-
-cores_per_lnc = os.environ["LNC"]
+cores_per_lnc = os.environ.get("LNC", "1")
 if cores_per_lnc == "2":
     use_lnc = True
 elif cores_per_lnc == "1":
