@@ -9,7 +9,10 @@ import jax.numpy as jnp
 # enable buffer donation in neuron
 jax._src.interpreters.mlir._platforms_with_donation.append("neuron")
 
-cores_per_lnc = os.environ.get("LNC", "2")
+if "LNC" not in os.environ:
+    raise ValueError("LNC environment variable is not set")
+
+cores_per_lnc = os.environ["LNC"]
 if cores_per_lnc == "2":
     use_lnc = True
 elif cores_per_lnc == "1":
