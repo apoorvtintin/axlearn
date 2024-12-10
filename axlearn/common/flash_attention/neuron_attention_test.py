@@ -75,9 +75,10 @@ def test_triton_fwd_only_against_ref(
         )
         out, _ = jax.vjp(fn, q, k, v, bias)
         return out
-
+    
     o = impl(q, k, v, bias, segment_ids)
-    o_ref = mha_reference(q, k, v, bias, segment_ids, causal=causal, softmax_scale=sm_scale)
+    with jax.default_device(jax.devices("cpu")[0]):
+        o_ref = mha_reference(q, k, v, bias, segment_ids, causal=causal, softmax_scale=sm_scale)
     chex.assert_trees_all_close(o, o_ref, atol=0.07)
 
 
@@ -145,7 +146,8 @@ def test_triton_against_xla_ref(
         causal=causal,
         softmax_scale=sm_scale,
     )
-    jax_ref_out = mha_reference(q, k, v, bias, segment_ids, causal=causal, softmax_scale=sm_scale)
+    with jax.default_device(jax.devices("cpu")[0]):
+        jax_ref_out = mha_reference(q, k, v, bias, segment_ids, causal=causal, softmax_scale=sm_scale)
     if input_dtype == jnp.float16:
         chex.assert_trees_all_close(jax_out, jax_ref_out, atol=0.005)
     elif input_dtype == jnp.float32:
@@ -173,5 +175,6 @@ def test_triton_against_xla_ref(
 
     # Compare gradients.
     jax_grads = jax.grad(fn, argnums=(0, 1, 2))(q, k, v, bias, segment_ids)
-    jax_ref_grads = jax.grad(ref_fn, argnums=(0, 1, 2))(q, k, v, bias, segment_ids)
+    with jax.default_device(jax.devices("cpu")[0]):
+        jax_ref_grads = jax.grad(ref_fn, argnums=(0, 1, 2))(q, k, v, bias, segment_ids)
     chex.assert_trees_all_close(jax_grads, jax_ref_grads, atol=0.05)
