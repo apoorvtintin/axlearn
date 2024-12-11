@@ -9,6 +9,8 @@ from collections.abc import Sequence
 from enum import Enum
 from typing import Any, Literal, Optional
 
+import os
+
 import seqio
 import tensorflow as tf
 from absl import logging
@@ -226,7 +228,9 @@ def text_to_lm_training_input(
         ds = ds.unbatch()
         # Shuffle so that read order is not dominated by document order.
         if shuffle_buffer_size > 0:
-            ds = ds.shuffle(shuffle_buffer_size, reshuffle_each_iteration=True)
+            seed = os.environ.get("DATA_SEED")
+            seed = int(seed) if seed is not None else None
+            ds = ds.shuffle(shuffle_buffer_size, reshuffle_each_iteration=True, seed = seed)
         return ds
 
     return process
