@@ -173,7 +173,6 @@ def is_supported(
     global_batch_size: int,
     data_partition: DataPartitionType,
 ):
-    del param_dtype, use_ema  # not used
     # TODO(xuan-zou): jax 0.4.25 breaks bfloat16 on CPU due to high variance on
     # the final result (up to 10% precision diff), will re-enable when fixed.
     # NOTE: bfloat16 test on GPU is added and verified.
