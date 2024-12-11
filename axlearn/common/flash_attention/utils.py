@@ -17,6 +17,7 @@ from axlearn.common.attention_bias import (
     MaskFnAttentionBias,
     SegmentIdAttentionBias,
     TensorAttentionBias,
+    ZeroAttentionBias,
     split,
 )
 from axlearn.common.flash_attention.gpu_attention import cudnn_dot_product_attention
@@ -105,7 +106,7 @@ MultiHeadAttentionImpl = Callable[[Tensor, Tensor, Tensor, Tensor, Optional[Tens
 
 
 def flash_attention_implementation(
-    backend: Literal["cpu", "tpu", "gpu", "xla"],
+    backend: Literal["cpu", "tpu", "gpu", "xla", "neuron"],
     *,
     softmax_scale: float,
     block_size: int = 128,
@@ -273,6 +274,30 @@ def flash_attention_implementation(
                 softmax_scale=softmax_scale,
                 block_size=block_size,
                 interpret=(backend == "cpu"),
+            )
+
+        elif backend == "neuron":
+            # pylint: disable=import-outside-toplevel
+            from axlearn.common.flash_attention.neuron_attention import (
+                flash_attention as neuron_flash_attention,
+            )
+
+            key = _repeat_kv_heads(query.shape[2], key)
+            value = _repeat_kv_heads(query.shape[2], value)
+
+            # other_biases inlcudes SegmentIdAttentionBias among other biases
+            causal, other_biases = split(bias, CausalAttentionBias)
+
+            if not isinstance(segment_ids, ZeroAttentionBias):
+                raise ValueError("Sequence Packing is not supported on Neuron backend")
+            return neuron_flash_attention(
+                query,
+                key,
+                value,
+                bias=other_biases.value(),
+                causal=causal.has_value(),
+                softmax_scale=softmax_scale,
+                dropout_rate=dropout_rate,
             )
 
         elif backend in ("cpu", "xla"):
