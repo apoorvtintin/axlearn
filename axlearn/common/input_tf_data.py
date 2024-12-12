@@ -320,7 +320,7 @@ def tfds_dataset(
             # during training before any processing.
             seed = os.environ.get("DATA_SEED")
             seed = int(seed) if seed is not None else None
-            ds = ds.shuffle(shuffle_buffer_size, reshuffle_each_iteration=True, , seed = seed)
+            ds = ds.shuffle(shuffle_buffer_size, reshuffle_each_iteration=True, seed = seed)
         return ds
 
     return fn
