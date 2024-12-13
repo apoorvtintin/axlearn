@@ -4190,7 +4190,7 @@ def build_remat_spec(
             )
         else:
             checkpoints.extend(
-                [f"{attention_name}.{el}" for el in ['q_proj', 'k_proj', 'v_proj']] + ["input_to_qkvee", "TransformerAttentionLayer.residual_add", "TransformerFeedForwardLayer.mlp_residual"]
+                [f"{attention_name}.{el}" for el in ['q_proj', 'k_proj', 'v_proj']] + ["TransformerAttentionLayer.residual_add", "TransformerFeedForwardLayer.mlp_residual"]
             )
     if feed_forward and hasattr(stack_cfg.layer, "feed_forward"):
         ffn_name = stack_cfg.layer.feed_forward.klass.__name__
@@ -4199,14 +4199,9 @@ def build_remat_spec(
         else:
             checkpoints.extend([f"{ffn_name}.{el}" for el in ["linear1_0", "linear1_1"]])
 
-    if backend != "neuron":
-        policy = config_for_function(jax_remat_policies.save_only_these_names).set(
-            names_which_can_be_saved=checkpoints
-        )
-    else:
-        policy = config_for_function(save_only_these).set(
-            names_to_save=checkpoints
-        )
+    policy = config_for_function(jax_remat_policies.save_only_these_names).set(
+        names_which_can_be_saved=checkpoints
+    )
 
     if offload_dst:
         policy = config_for_function(jax_remat_policies.save_and_offload_only_these_names).set(
