@@ -10,6 +10,8 @@ The fuji models are set up to imitate LLaMA models:
 * LLaMA 3: https://github.com/meta-llama/llama3
 """
 
+import os
+
 import enum
 import functools
 import itertools
@@ -53,6 +55,12 @@ from axlearn.experiments.text.gpt.common import (
 from axlearn.experiments.text.gpt.common import model_config as common_model_config
 from axlearn.experiments.text.gpt.common import scaled_hidden_dim
 from axlearn.experiments.trainer_config_utils import TrainerConfigFn
+
+#ENV VAR CONFIGS
+lr_exp  = int(os.environ.get("OPTIMIZER_LR_EXP",-4))
+opt_lr  = float(os.environ.get("OPTIMIZER_LR_BASE",3))
+opt_lr *= (10 ** lr_exp)
+opt_wd=float(os.environ.get("OPTIMIZER_WD",0.1))
 
 MODEL_SIZES = ("test", "1B", "3B", "7B", "8B", "70B")
 
@@ -121,7 +129,7 @@ def get_trainer_kwargs(
         return {}
     max_step = TOTAL_TOKENS[version][model_size] // tokens_per_batch
     max_sequence_length = MAX_SEQUENCE_LENGTH[version]
-    train_batch_size = tokens_per_batch // max_sequence_length
+    train_batch_size = 64 # 128 #HAH Quick Hack tokens_per_batch // max_sequence_length
 
     # Whether to use grouped query attention.
     num_kv_heads = None
@@ -195,18 +203,22 @@ def get_trainer_kwargs(
         )
     elif model_size == "7B":
         trainer_kwargs = dict(
-            model_kwargs=dict(
-                num_layers=32,
+            save_every_n_steps=1000,
+            eval_every_n_steps=5000,
+                model_kwargs=dict(
+                num_layers=int(os.environ.get("N_LAYERS",8)),
                 hidden_dim=128 * 32,
                 num_heads=32,
-                num_kv_heads=num_kv_heads,
+                num_kv_heads=num_kv_heads,  #Differ from 70B
                 rope_theta=rope_theta,
-                shared_lm_head=True,
+                shared_lm_head=True, #Differ from 70B
                 flash_attention=flash_attention,
             ),
-            learner_kwargs=dict(peak_lr=3e-4, weight_decay=0.1),
+            #learner_kwargs=dict(peak_lr=3e-4, weight_decay=0.1),
+            #learner_kwargs=dict(peak_lr=1.5e-5, weight_decay=6e-6), #try original first
+            learner_kwargs=dict(peak_lr=opt_lr, weight_decay=opt_wd),
             max_sequence_length=max_sequence_length,
-            train_batch_size=train_batch_size,
+            train_batch_size=int(os.environ.get("N_GBS",16)), #HAH Quick Hack : train_batch_size,
             max_step=max_step,
             mesh_shape=mesh_shape_from_axes(data=-1, fsdp=8),
             mesh_rules=(
@@ -286,6 +298,45 @@ def get_trainer_kwargs(
                 (
                     "gpu-(p5.48xlarge|p4de.24xlarge|a3-highgpu-8g)-(256|512|1024)",
                     mesh_shape_from_axes(data=-1, fsdp=8),
+                ),
+                (
+                    "gpu-4node-baseline",
+                    ChainConfigModifier.default_config().set(
+                        config_modifiers=[
+                            MeshShapeModifier.default_config().set(
+                                mesh_shape=mesh_shape_from_axes(fsdp=32)
+                            ),
+                            GradientAccumulationModifier.default_config().set(
+                                grad_acc_steps=int(os.environ.get("N_ACCUMULATION",1))
+                            ),
+                        ],
+                    ),
+                ),
+                (
+                    "gpu-8node-baseline",
+                    ChainConfigModifier.default_config().set(
+                        config_modifiers=[
+                            MeshShapeModifier.default_config().set(
+                                mesh_shape=mesh_shape_from_axes(fsdp=64)
+                            ),
+                            GradientAccumulationModifier.default_config().set(
+                                grad_acc_steps=int(os.environ.get("N_ACCUMULATION",1))
+                            ),
+                        ],
+                    ),
+                ),
+                (
+                    "gpu-16node-baseline",
+                    ChainConfigModifier.default_config().set(
+                        config_modifiers=[
+                            MeshShapeModifier.default_config().set(
+                                mesh_shape=mesh_shape_from_axes(fsdp=128)
+                            ),
+                            GradientAccumulationModifier.default_config().set(
+                                grad_acc_steps=int(os.environ.get("N_ACCUMULATION",1))
+                            ),
+                        ],
+                    ),
                 ),
             ),
         )
@@ -371,8 +422,10 @@ def get_trainer_kwargs(
         )
     elif model_size == "70B":
         trainer_kwargs = dict(
+            eval_every_n_steps=5000,
+            save_every_n_steps=1000,
             model_kwargs=dict(
-                num_layers=80,
+                num_layers=int(os.environ.get("N_LAYERS",8)),
                 hidden_dim=128 * 64,
                 num_heads=64,
                 # No GQA support in V1 models, so num_kv_heads is the same as num_heads.
@@ -383,9 +436,11 @@ def get_trainer_kwargs(
                 shared_lm_head=False,
                 flash_attention=flash_attention,
             ),
-            learner_kwargs=dict(peak_lr=1.5e-4, weight_decay=0.1),
+            #learner_kwargs=dict(peak_lr=1.5e-4, weight_decay=0.1), #Does not converge on GPU
+            #learner_kwargs=dict(peak_lr=1.5e-5, weight_decay=6e-6), #match previous baseline
+            learner_kwargs=dict(peak_lr=opt_lr, weight_decay=opt_wd),
             max_sequence_length=max_sequence_length,
-            train_batch_size=train_batch_size,
+            train_batch_size=int(os.environ.get("N_GBS",16)), #HAH Quick Hack : train_batch_size,
             max_step=max_step,
             mesh_shape=mesh_shape_from_axes(fsdp=-1),
             mesh_rules=(
@@ -416,6 +471,49 @@ def get_trainer_kwargs(
                 (
                     "gpu-(p5.48xlarge|p4de.24xlarge)-(512|1024)",
                     mesh_shape_from_axes(data=-1, fsdp=128),
+                ),
+                (
+                    "gpu-1node-baseline",
+                    mesh_shape_from_axes(fsdp=8),
+                ),
+                (
+                    "gpu-4node-baseline",
+                    ChainConfigModifier.default_config().set(
+                        config_modifiers=[
+                            MeshShapeModifier.default_config().set(
+                                mesh_shape=mesh_shape_from_axes(fsdp=32)
+                            ),
+                            GradientAccumulationModifier.default_config().set(
+                                grad_acc_steps=int(os.environ.get("N_ACCUMULATION",1))
+                            ),
+                        ],
+                    ),
+                ),
+                (
+                    "gpu-8node-baseline",
+                    ChainConfigModifier.default_config().set(
+                        config_modifiers=[
+                            MeshShapeModifier.default_config().set(
+                                mesh_shape=mesh_shape_from_axes(fsdp=64)
+                            ),
+                            GradientAccumulationModifier.default_config().set(
+                                grad_acc_steps=int(os.environ.get("N_ACCUMULATION",1))
+                            ),
+                        ],
+                    ),
+                ),
+                (
+                    "gpu-16node-baseline",
+                    ChainConfigModifier.default_config().set(
+                        config_modifiers=[
+                            MeshShapeModifier.default_config().set(
+                                mesh_shape=mesh_shape_from_axes(fsdp=128)
+                            ),
+                            GradientAccumulationModifier.default_config().set(
+                                grad_acc_steps=int(os.environ.get("N_ACCUMULATION",1))
+                            ),
+                        ],
+                    ),
                 ),
             ),
         )
