@@ -579,7 +579,7 @@ class SpmdTrainer(Module):
                     )
                     self.vlog(3, "Done step %s", self.step)
                     num_steps += 1
-                    if num_steps % 100 == 0:
+                    if num_steps % 10 == 0:
                         now = time.perf_counter()
                         average_step_time = (now - start_time) / num_steps
                         self._step_log("Average step time: %s seconds", average_step_time)
@@ -589,6 +589,11 @@ class SpmdTrainer(Module):
                     if self.step >= cfg.max_step:
                         self._step_log("Reached max_step=%s. Stopping", cfg.max_step)
                         break
+                    if (max_train_steps := os.environ.get("MAX_TRAIN_STEPS")) is not None:
+                        max_train_steps = int(max_train_steps)
+                        if self.step >= max_train_steps:
+                            self._step_log(f"Stopping test run after {max_train_steps} steps")
+                            break
                 if self.step < cfg.max_step:
                     self._step_log("Reached end of inputs. Stopping")
             self._step_log("Checkpointer flushed.")
@@ -1024,7 +1029,7 @@ class SpmdTrainer(Module):
             # Run the compiled function.
             self._trainer_state, outputs = compiled_train_step_fn(self.trainer_state, input_batch)
 
-        if self.step % 100 == 0 or 0 <= self.step <= 5:
+        if self.step % 10 == 0 or 0 <= self.step <= 5:
             self._step_log(
                 "loss=%s aux=%s",
                 outputs["loss"],
