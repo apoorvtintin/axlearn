@@ -9,8 +9,6 @@ from collections.abc import Sequence
 from enum import Enum
 from typing import Any, Literal, Optional
 
-import os
-
 import seqio
 import tensorflow as tf
 from absl import logging
@@ -23,6 +21,9 @@ from axlearn.common.input_tf_data import rekey
 # Value of "target_labels" which will be ignored in seq2seq processing.
 SEQ2SEQ_IGNORE_TARGET_LABEL = -1
 
+seed = os.environ.get("DATA_SEED")
+seed = int(seed) if seed is not None else None
+tf.random.set_seed(seed)
 
 class InputDataType(Enum):
     """Represents input data types for decoder-only language model training.
@@ -228,9 +229,7 @@ def text_to_lm_training_input(
         ds = ds.unbatch()
         # Shuffle so that read order is not dominated by document order.
         if shuffle_buffer_size > 0:
-            seed = os.environ.get("DATA_SEED")
-            seed = int(seed) if seed is not None else None
-            ds = ds.shuffle(shuffle_buffer_size, reshuffle_each_iteration=True, seed = seed)
+            ds = ds.shuffle(shuffle_buffer_size, reshuffle_each_iteration=True)
         return ds
 
     return process

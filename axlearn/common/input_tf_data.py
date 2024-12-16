@@ -11,8 +11,6 @@
 from collections.abc import Mapping, Sequence
 from typing import Any, Callable, Optional, Union
 
-import os
-
 import jax
 import seqio
 import tensorflow as tf
@@ -76,7 +74,6 @@ def tfds_read_config(
     shard_index: Optional[int] = None,
     read_parallelism: int = 1,
     decode_parallelism: int = 32,
-    seed: Optional[int] = None,
 ) -> tfds.ReadConfig:
     """Constructs a ReadConfig for tfds dataset.
 
@@ -98,8 +95,6 @@ def tfds_read_config(
     Returns:
         A tfds.ReadConfig.
     """
-    seed = os.environ.get("DATA_SEED")
-    seed = int(seed) if seed is not None else None
     num_shards = jax.process_count() if num_shards is None else num_shards
     shard_index = jax.process_index() if shard_index is None else shard_index
     num_parallel_calls_for_read = read_parallelism if is_training else 1
@@ -111,7 +106,6 @@ def tfds_read_config(
         input_context=tf.distribute.InputContext(
             num_input_pipelines=num_shards, input_pipeline_id=shard_index
         ),
-        shuffle_seed=seed,
     )
 
 
@@ -275,14 +269,11 @@ def tfds_dataset(
 
     if data_dir is None:
         data_dir = get_data_dir()
-    
-    seed = os.environ.get("DATA_SEED")
-    seed = int(seed) if seed is not None else None
 
     if read_config is None:
-        read_config = config_for_function(tfds_read_config).set(is_training=is_training, seed = seed)
+        read_config = config_for_function(tfds_read_config).set(is_training=is_training)
     else:
-        read_config = read_config.set(is_training=is_training, seed = seed)
+        read_config = read_config.set(is_training=is_training)
 
     def fn() -> tf.data.Dataset:
         local_read_config = read_config.clone()
@@ -318,9 +309,7 @@ def tfds_dataset(
         if shuffle_buffer_size > 0:
             # Subsequent processing may merge/split examples (e.g. for T5), so shuffle examples
             # during training before any processing.
-            seed = os.environ.get("DATA_SEED")
-            seed = int(seed) if seed is not None else None
-            ds = ds.shuffle(shuffle_buffer_size, reshuffle_each_iteration=True, seed = seed)
+            ds = ds.shuffle(shuffle_buffer_size, reshuffle_each_iteration=True)
         return ds
 
     return fn
@@ -380,9 +369,7 @@ def tfrecord_dataset(
         if shuffle_buffer_size > 0:
             # Subsequent processing may merge/split examples (e.g. for T5), so shuffle examples
             # during training before any processing.
-            seed = os.environ.get("DATA_SEED")
-            seed = int(seed) if seed is not None else None
-            ds = ds.shuffle(shuffle_buffer_size, reshuffle_each_iteration=True, seed = seed)
+            ds = ds.shuffle(shuffle_buffer_size, reshuffle_each_iteration=True)
         return ds
 
     return fn
@@ -1090,9 +1077,7 @@ def shuffle(shuffle_buffer_size: int) -> DatasetToDatasetFn:
 
     def fn(ds: tf.data.Dataset) -> tf.data.Dataset:
         if shuffle_buffer_size > 0:
-            seed = os.environ.get("DATA_SEED")
-            seed = int(seed) if seed is not None else None
-            ds = ds.shuffle(shuffle_buffer_size, reshuffle_each_iteration=True, seed = seed)
+            ds = ds.shuffle(shuffle_buffer_size, reshuffle_each_iteration=True)
 
         return ds
 
