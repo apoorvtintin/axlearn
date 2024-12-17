@@ -182,6 +182,21 @@ def get_trainer_kwargs(
             train_batch_size=train_batch_size,
             max_step=max_step,
             mesh_shape=mesh_shape_from_axes(data=-1, fsdp=8),
+            mesh_rules=(
+                (
+                    "gpu-4node-baseline",
+                    ChainConfigModifier.default_config().set(
+                        config_modifiers=[
+                            MeshShapeModifier.default_config().set(
+                                mesh_shape=mesh_shape_from_axes(fsdp=32)
+                            ),
+                            GradientAccumulationModifier.default_config().set(
+                                grad_acc_steps=int(os.environ.get("N_ACCUMULATION",1))
+                            ),
+                        ],
+                    ),
+                ),
+            )
         )
     elif model_size == "3B":
         trainer_kwargs = dict(
