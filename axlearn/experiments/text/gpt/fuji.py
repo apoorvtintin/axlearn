@@ -430,6 +430,7 @@ def get_trainer_kwargs(
         max_step=trainer_kwargs["max_step"],
         **trainer_kwargs.pop("learner_kwargs"),
     )
+    trainer_kwargs["save_input_iterator"] = True
     # pylint: enable=use-dict-literal
     return trainer_kwargs
 

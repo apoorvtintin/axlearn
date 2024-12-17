@@ -645,6 +645,7 @@ def get_trainer_config_fn(
     keep_every_n_steps: int = 50_000,
     save_every_n_steps: Optional[int] = None,
     init_state_builder: Optional[state_builder.Builder.Config] = None,
+    save_input_iterator: Optional[bool] = False,
 ) -> TrainerConfigFn:
     """Builds a TrainerConfigFn according to the model and input specs.
 
@@ -679,6 +680,7 @@ def get_trainer_config_fn(
         cfg.learner = learner_cfg
         cfg.max_step = max_step
         cfg.train_dtype = STEP_DTYPE
+        cfg.save_input_iterator = save_input_iterator
         cfg.input = input_tf_data.Input.default_config().set(
             is_training=True,
             source=train_input_source,
