@@ -189,6 +189,7 @@ def restore_tf_savables(value_map: Nested[Any], *, dir: str) -> Nested[Any]:
     """Restores TF savables from `dir` into `value_map` in-place."""
 
     for path, value in utils.flatten_items(value_map):
+        logging.info("restoring path %s, value %s", path, value)
         tf_checkpoint = tf.train.Checkpoint(value)
         tf_checkpoint.read(os.path.join(dir, path))
 
@@ -540,9 +541,11 @@ class TensorStoreStateStorage(StateStorage):
         check_state_structure(
             read_index_file(ckpt_dir), target_structure=spec.index, validation=validation
         )
+        logging.info(" 1 Restoring checkpoint from directory %s", ckpt_dir)
         restore_tf_savables(
             spec.tf_ckpt_map, dir=os.path.join(ckpt_dir, f"tf_{jax.process_index()}")
         )
+        logging.info(" 2 Restoring checkpoint from directory %s", ckpt_dir)
         maybe_restore_grain_savables(
             spec.grain_ckpt_map, dir=os.path.join(ckpt_dir, f"grain_{jax.process_index()}")
         )
@@ -556,13 +559,16 @@ class TensorStoreStateStorage(StateStorage):
         )
         state_leaves = []
         for path, value in spec.index:
+            logging.info(" path %s, value %s", path, value)
             if path == "step":
                 pass
             elif path in spec.tf_ckpt_map:
                 state_leaves.append(spec.tf_ckpt_map[path])
+                logging.info("tf_ckpt_map %s", spec.tf_ckpt_map[path])
             elif path in spec.grain_ckpt_map:
                 state_leaves.append(spec.grain_ckpt_map[path])
             elif isinstance(value, dict):
+                logging.info("restored_gda_values.pop(0) %s", restored_gda_values[0])
                 state_leaves.append(restored_gda_values.pop(0))
             else:
                 raise RuntimeError(f"Unknown index entry '{value}'")
@@ -571,6 +577,7 @@ class TensorStoreStateStorage(StateStorage):
             jax.tree_util.tree_structure(state), state_leaves
         )
         multihost_utils.sync_global_devices(ckpt_dir)
+        # state_leaves.append(maybe_convert_param(path, restored_gda_values.pop(0)))        
         return restored_state
 
     def stop(self):
@@ -1086,6 +1093,50 @@ class Checkpointer(BaseCheckpointer):
                 step=step, state=state, ckpt_dir=ckpt_dir
             )
             logging.info("Restored state from ckpt at step %s", step)
+            from jax.experimental.pjit import pjit
+            import re
+            def convert_to_new_embeddings(x):
+                even_indices = jnp.arange(0, x.shape[-1], 2)
+                odd_indices = jnp.arange(1, x.shape[-1], 2)
+                reorder_indices = jnp.concatenate([odd_indices, even_indices])
+                return x[..., reorder_indices]
+
+            def maybe_convert_param(param, value, spec):
+                logging.info("param str %s", str(param))
+                logging.info("value %s", value)
+                logging.info("spec %s", spec)
+                logging.info("spec.mesh_axes %s", spec.mesh_axes)
+                # pattern = r'model/decoder/transformer/layer(\d+)/self_attention/attention/i_proj/i_proj/[qkv]_proj/weight'
+                pattern = r'.*([kq]_proj).*'
+                # pytree_str = ""
+                pytree_str = jax.tree_util.keystr(param)
+                # for key in param:
+                #     pytree_str += ('/' + str(key))
+
+                match = re.match(pattern, pytree_str)
+                logging.info("pytree_str %s", pytree_str)
+                if match:
+                    # layer_number = match.group(1)
+                    # proj_type = param.split('/')[-2][0]  # Extract 'q', 'k', or 'v'
+                    # logging.info(f"Projection type: {proj_type}")
+
+                    return convert_to_new_embeddings(value)
+
+                return value
+            
+            logging.info("state %s", restored_state)
+            # new_state
+            # for path, value in utils.flatten_items(restored_state):
+            #     maybe_convert_param(path, value)
+            def convert_wrapper(restored_state):
+                return jax.tree_util.tree_map_with_path(maybe_convert_param, restored_state, state)
+                
+            fn = pjit(
+                convert_wrapper,
+                # in_shardings=value.sharding,
+                # out_shardings=value.sharding,
+            )
+            restored_state = fn(restored_state)
             if "summary_writer" in self.children:
                 self.summary_writer.log_checkpoint(
                     step=step,
