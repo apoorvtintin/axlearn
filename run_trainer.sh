@@ -50,6 +50,9 @@ which python
 # # Neuron runtime flags
 # export NEURON_RT_ASYNC_EXEC_MAX_INFLIGHT_REQUESTS=1
 
+#DATALOADER SEED
+export DATA_SEED=42
+
 # Neuron env vars for distributed training based on SLURM
 nodes=$(scontrol show hostnames "$SLURM_JOB_NODELIST")
 num_nodes=${SLURM_NNODES}
