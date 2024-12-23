@@ -218,14 +218,13 @@ def flash_attention_implementation(
             )
         elif backend == "neuron":
             # shard_map-decorated function needs to be jitted.
-            @jax.jit
-            def jit_attn(query, key, value, bias, segment_ids):
-                if segment_ids != None:
-                    raise Exception("Sequence Packing is not supported on Neuron backend")
-                return neuron_flash_attention(
-                    query, key, value, bias, causal, softmax_scale)
-
-            return jit_attn
+            causal, segment_ids, explicit_bias = split(
+                bias, CausalAttentionBias, SegmentIdAttentionBias
+            )
+            # if segment_ids.value() != None:
+            #     raise Exception("Sequence Packing is not supported on Neuron backend")
+            return neuron_flash_attention(
+                query, key, value, bias=explicit_bias.value(), causal=causal.value(), softmax_scale=softmax_scale)
         elif backend in ("cpu", "xla"):
             if backend == "cpu":
                 logging.warning("Flash attention CPU backend is for testing only.")

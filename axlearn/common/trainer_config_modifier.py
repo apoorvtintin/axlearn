@@ -4,7 +4,7 @@
 
 from typing import Dict, Sequence, Union
 
-from axlearn.common import config
+from axlearn.common import config, causal_lm
 from axlearn.common.base_layer import RematSpec
 from axlearn.common.config import (
     REQUIRED,
@@ -18,7 +18,6 @@ from axlearn.common.gradient_accumulation import with_minibatch_steps
 from axlearn.common.metrics import MetricAccumulator
 from axlearn.common.trainer import SpmdTrainer
 from axlearn.common.utils import HybridMeshShape, MeshShape
-
 
 class GradientAccumulationModifier(ConfigModifier):
     """Accumulate gradients for grad_acc_steps steps."""
@@ -145,6 +144,40 @@ class MeshShapeModifier(ConfigModifier):
         cfg.mesh_shape = self._mesh_shape
         return cfg
 
+class StackConfigModifier(ConfigModifier):
+    """Update the mesh_shape for the trainer config."""
+
+    @config_class
+    class Config(ConfigModifier.Config):
+        """Configure MeshShapeModifier.
+
+        Attributes:
+            mesh_shape: The mesh shape to be updated to.
+        """
+
+        stack_cfg: Required[causal_lm.TransformerStackConfig] = REQUIRED
+
+    def __init__(self, cfg: Config):
+        super().__init__(cfg)
+        cfg = self.config
+        self._stack_cfg = cfg.stack_cfg
+
+    def __call__(self, cfg: SpmdTrainer.Config) -> SpmdTrainer.Config:
+        """Overwrite the mesh shape.
+
+        Args:
+            cfg: The trainer config to be modified.
+
+        Returns:
+            The modified trainer config.
+        """
+        import logging
+        logging.info("cfg is %s", cfg)
+        self._stack_cfg.set(num_layers=cfg.model.decoder.transformer.num_layers, layer=cfg.model.decoder.transformer.layer)
+        # cfg.model.decoder.transformer.klass = self._stack_cfg.klass
+        cfg.model.decoder.transformer = self._stack_cfg
+        
+        return cfg
 
 class ChainConfigModifier(ConfigModifier):
     """Chain multiple config modifiers together."""

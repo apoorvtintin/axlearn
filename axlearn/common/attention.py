@@ -4079,7 +4079,7 @@ def build_remat_spec(
         checkpoints = []
         checkpoints.extend([f"{attention_name}.{el}" for el in ['q_proj', 'k_proj', 'v_proj']] + ["input_to_qkvee", "TransformerAttentionLayer.residual_add", "TransformerFeedForwardLayer.mlp_residual"])
         checkpoints.extend([f"{ffn_name}.{el}" for el in ["linear1_0", "linear1_1"]])
-        policy = config_for_function(jax_remat_policies.save_only_these).set(names_which_can_be_saved=checkpoints)
+        policy = config_for_function(save_only_these).set(names_to_save=checkpoints)
 
     return RematSpec(
         prevent_cse=stack_cfg.klass is StackedTransformerLayer,

@@ -42,6 +42,7 @@ from axlearn.common.trainer_config_modifier import (
     GradientAccumulationModifier,
     MeshShapeModifier,
     RematSpecModifier,
+    StackConfigModifier,
 )
 from axlearn.common.utils import DataPartitionType, extended_checkpoint_policies
 from axlearn.experiments.text.gpt.common import (
@@ -402,7 +403,7 @@ def get_trainer_kwargs(
     elif model_size == "70B":
         trainer_kwargs = dict(
             model_kwargs=dict(
-                num_layers=80,
+                num_layers=2,
                 hidden_dim=128 * 64,
                 num_heads=64,
                 # No GQA support in V1 models, so num_kv_heads is the same as num_heads.
@@ -411,11 +412,11 @@ def get_trainer_kwargs(
                 ffn_dim=scaled_hidden_dim(scale=3.5, round_up_to_multiples_of=256),
                 rope_theta=rope_theta,
                 shared_lm_head=False,
-                flash_attention=True,
+                flash_attention=False,
             ),
             learner_kwargs=dict(peak_lr=1.5e-4, weight_decay=0.1),
             max_sequence_length=max_sequence_length,
-            train_batch_size=train_batch_size,
+            train_batch_size=16,
             input_partition_type=None if backend != "neuron" else DataPartitionType.BATCH,
             max_step=max_step,
             mesh_shape=mesh_shape_from_axes(fsdp=-1),
@@ -429,7 +430,7 @@ def get_trainer_kwargs(
                     ChainConfigModifier.default_config().set(
                         config_modifiers=[
                             MeshShapeModifier.default_config().set(
-                                mesh_shape=mesh_shape_from_axes(data=-1, fsdp=256)
+                                mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
                             ),
                             RematSpecModifier.default_config().set(
                                 remat_policies={
@@ -450,7 +451,16 @@ def get_trainer_kwargs(
                 ),
                 (
                     "neuron-(trn2|trn2n).48xlarge-64",
-                    mesh_shape_from_axes(fsdp=-1, model=4),
+                    ChainConfigModifier.default_config().set(
+                        config_modifiers=[
+                            MeshShapeModifier.default_config().set(
+                                mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
+                            ),
+                            StackConfigModifier.default_config().set(
+                                stack_cfg=StackedTransformerLayer.default_config()
+                            ),
+                        ],
+                    ),
                 ),
             ),
         )

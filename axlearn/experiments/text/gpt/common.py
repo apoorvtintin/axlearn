@@ -320,9 +320,9 @@ def model_config(
         cfg.decoder.emb.token_emb.param_partition_spec = ("model", ("expert", "fsdp", "seq")) # shard vocab
         if lm_head_cfg != None:
             cfg.decoder.lm_head.param_partition_spec = ("model", ("expert", "fsdp", "seq")) # shard vocab
-        cfg.decoder.emb.token_emb.pregather_partition_spec = ('fsdp', None)
+        cfg.decoder.emb.token_emb.input_partition_spec = ('fsdp', None)
         cfg.decoder.emb.token_emb.embedding_partition_spec = ('model', None)
-        cfg.decoder.emb.token_emb.postgather_partition_spec = ('fsdp', None, None)
+        cfg.decoder.emb.token_emb.output_partition_spec = ('fsdp', None, None)
 
     set_bias_recursively(cfg, False)
     set_norm_recursively(cfg, normalization)
