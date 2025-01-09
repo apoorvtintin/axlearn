@@ -34,6 +34,9 @@ from jax.experimental.array_serialization import serialization
 
 from axlearn.common.utils import Tensor
 
+if jax.default_backend() == "neuron":
+    import jax_neuronx  # noqa: F401
+
 
 @dataclass
 class _ShardInfo:
