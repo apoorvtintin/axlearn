@@ -83,11 +83,12 @@ class SerializerTest(parameterized.TestCase):
     def _create_partially_replicated_array(self, sharded: bool):
         single_device_arr = jnp.arange(0, 1023 * 1024).reshape(1023, 1024)
         if sharded:
-            if jax.device_count() != 8 or jax.process_count() != 1:
-                self.skipTest("Incorrect device count for mesh.")
-            devices = mesh_utils.create_device_mesh((8,))
+            if (jax.device_count() != (64 if jax.default_backend() == "neuron" else 8)
+                or jax.process_count() != 1):
+                self.skipTest(f"Incorrect device count ({jax.device_count()}) for the test.",)
+            devices = mesh_utils.create_device_mesh((jax.device_count(),))
             sharding = PositionalSharding(devices)
-            arr = jax.device_put(single_device_arr, sharding.reshape(4, 2).replicate(0))
+            arr = jax.device_put(single_device_arr, sharding.reshape(int(jax.device_count()/2), 2).replicate(0))
             return arr
         return single_device_arr
 
