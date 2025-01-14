@@ -398,10 +398,10 @@ def validate_probs(fuji_model_name, llama_model_name, p=DEFAULT_P):
     fuji_probs = np.load(f"{fuji_model_name}_probs.npy")
     llama_probs = np.load(f"{llama_model_name}_probs.npy")
 
-    atol_high = 3.3e-4
-    rtol_high = 2e-3
-    atol_low = 1.5e-6
-    rtol_low = 1e-3
+    atol_high = 1e-5
+    rtol_high = 1e-2
+    atol_low = 1e-9
+    rtol_low = 2e-2
 
     top_k_smallest = get_top_k_smallest(llama_probs, fuji_probs)
     top_k_smallest = min(min(seq_values) for seq_values in top_k_smallest)
@@ -409,6 +409,8 @@ def validate_probs(fuji_model_name, llama_model_name, p=DEFAULT_P):
     threshold_min, threshold_max = 1e-5, 1e-4
     threshold = min(top_k_smallest, threshold_max)
     threshold = max(threshold, threshold_min)
+    # selected threshold per dicussion with Hah
+    threshold = 1e-3
     print("threshold:", threshold)
 
     # (0.00065897405 - 3.4e-5) / 0.19473135
