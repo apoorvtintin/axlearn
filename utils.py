@@ -15,11 +15,13 @@ from axlearn.common import config, evaler, input_tf_data, measurement, utils
 from axlearn.common.checkpointer import Checkpointer, CheckpointValidationType
 from axlearn.common.decoder import LmHead
 from axlearn.common.inference import InferenceRunner, _InferenceRunnerState
-from axlearn.common.utils import PartitionSpec, TensorSpec
+from axlearn.common.trainer import select_mesh_config
+from axlearn.common.utils import PartitionSpec, TensorSpec, MeshShape, infer_mesh_shape
 from axlearn.experiments import get_named_trainer_config
 from axlearn.experiments.text.gpt import c4_trainer
 
 seed = 123
+backend = jax.default_backend()
 
 
 def get_trainer_config(config_name):
@@ -27,6 +29,25 @@ def get_trainer_config(config_name):
         config_name, config_module="axlearn.experiments.text.gpt.c4_trainer"
     )
     trainer_config = trainer_config_fn()
+
+    # Enable forward pass to return logits and loss
+    trainer_config.evalers["validation"].metric_calculator = trainer_config.evalers[
+        "validation"
+    ].metric_calculator.set(model_method_kwargs={"return_aux": True})
+
+    if backend == "neuron":
+        mesh_selector = "neuron-trn2.48xlarge-64"
+    else:
+        mesh_selector = None
+
+    # extra config from launch_trainer.py get_trainer_config
+    if mesh_selector is not None:
+        select_mesh_config(trainer_config, mesh_selector=mesh_selector)
+    trainer_config.mesh_axis_names = trainer_config.mesh_axis_names or ("data", "model")
+    trainer_config.mesh_shape = trainer_config.mesh_shape or (len(jax.devices()), 1)
+    if isinstance(trainer_config.mesh_shape, MeshShape):
+        trainer_config.mesh_shape = infer_mesh_shape(trainer_config.mesh_shape)
+
     return trainer_config
 
 

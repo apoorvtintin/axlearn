@@ -225,6 +225,79 @@ def validate_conversion(
     np.save(f"{llama_model_name}_probs", llama_probs)
 
 
+def validate_conversion_trn(
+    fuji_model_name,
+    texts,
+    fuji_model_path,
+):
+    """Run forward pass on text on TRN device.
+
+    changes from this commit are needed to get logit output. Also, this only works in TRN device,
+    because TRN branch has changes on functions like utils.host_to_global_device_array
+    """
+    trainer_config = get_trainer_config(fuji_model_name)
+    infer_runner, infer_runner_config = init_infer_runner(trainer_config, fuji_model_path)
+    fuji = infer_runner.model
+    state = infer_runner._inference_runner_state.model
+
+    tokenizer = get_sentence_piece_tokenizer()
+
+    def pad_list(l, max_len, fill_value=tokenizer.pad_id):
+        return [tokenizer.eos_id] + l + [fill_value] * (max_len - len(l) - 1)
+
+    ids = tokenizer.encode(texts)
+    padded_ids = [pad_list(cur_ids, 6) for cur_ids in ids]
+    ids = [cur_ids[:4] for cur_ids in padded_ids]
+    target_ids = [cur_ids[1:5] for cur_ids in padded_ids]
+
+    trainer_config = get_trainer_config(fuji_model_name)
+    trainer_config.dir = "runs/artifacts/validate_trn/axlearn_out/"
+    trainer_config.evalers["validation"].metric_calculator = trainer_config.evalers[
+        "validation"
+    ].metric_calculator.set(model_method_kwargs={"return_aux": True})
+    evaler_config = trainer_config.evalers["validation"]
+    evaler_config.name = "validation"
+    evaler_config.summary_writer.dir = (
+        "runs/artifacts/validate_trn/axlearn_out/summaries/validation"
+    )
+
+    with get_mesh(trainer_config):
+        model_param_specs = fuji.create_parameter_specs_recursively()
+        model_param_partition_specs = jax.tree.map(lambda spec: spec.mesh_axes, model_param_specs)
+        evaler = evaler_config.instantiate(
+            parent=None,
+            model=fuji,
+            model_param_partition_specs=model_param_partition_specs,
+        )
+
+        prng_key = jax.random.PRNGKey(seed)
+        input_batch = {"input_ids": jnp.asarray(ids), "target_labels": jnp.asarray(target_ids)}
+        global_input_batch = utils.host_to_global_device_array(
+            input_batch,
+            partition=trainer_config.input_partition_type,
+            batch_axis_names=trainer_config.batch_axis_names,
+        )
+        # model param not actually used in ModelSummaryAccumulator
+        metric_calculator_state = evaler.metric_calculator.init_state(
+            prng_key=prng_key, model_params=state
+        )
+        next_key, forward_prng = jax.random.split(prng_key)
+        forward_outputs = evaler.metric_calculator.forward(
+            global_input_batch,
+            model_params=state,
+            state=metric_calculator_state,
+        )
+
+        loss, fuji_outputs = forward_outputs["output"]
+        fuji_logits = np.asarray(fuji_outputs["logits"])
+        fuji_probs = np.asarray(jax.nn.softmax(fuji_logits))
+
+    np.save(f"{fuji_model_name}_trn_probs", fuji_probs)
+    print(fuji_probs[0][0])
+    assert isinstance(fuji_logits.dtype, np.dtypes.Float32DType)
+    assert isinstance(fuji_probs.dtype, np.dtypes.Float32DType)
+
+
 def convert_and_save_checkpoint(
     fuji_model_name,
     llama_model_name,
@@ -378,6 +451,14 @@ def generate(texts, config_name, checkpoint_path):
     return results
 
 
+def extend_texts(texts, batch_size=16):
+    results = list()
+    while len(results) < batch_size:
+        results.extend(texts)
+
+    return results[:batch_size]
+
+
 if __name__ == "__main__":
     texts = [
         "How are you doing?",
@@ -421,6 +502,13 @@ if __name__ == "__main__":
     #     fuji_model_path="/fsx/czhenguo/Projects/fruitstand/runs/artifacts/axlearn_venv/baselines/10976/axlearn_out/checkpoints/step_00034000",
     #     trn_checkpoint=False,
     #     use_gqa=False,
+    # )
+
+    # texts = extend_texts(texts, 16)
+    # validate_conversion_trn(
+    #     "fuji-7B-v2",
+    #     texts,
+    #     "/fsx/czhenguo/Projects/fruitstand/runs/artifacts/axlearn_venv/validation/fuji-7B-v2-4l/step_00022794",
     # )
 
     # Axlearn to Llama 7B TRN 4L true model
