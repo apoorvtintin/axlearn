@@ -393,25 +393,32 @@ def generate_tolerance_map(fuji_model_name, llama_model_name, p=DEFAULT_P):
         f.write(low_end_md)
 
 
-
-def validate_probs(fuji_model_name, llama_model_name, p=DEFAULT_P):
+def validate_probs(fuji_model_name, llama_model_name, p=DEFAULT_P, threshold=None):
     fuji_probs = np.load(f"{fuji_model_name}_probs.npy")
     llama_probs = np.load(f"{llama_model_name}_probs.npy")
 
-    atol_high = 1e-5
-    rtol_high = 1e-2
-    atol_low = 1e-9
-    rtol_low = 2e-2
-
     top_k_smallest = get_top_k_smallest(llama_probs, fuji_probs)
     top_k_smallest = min(min(seq_values) for seq_values in top_k_smallest)
-    # Selecting a threshold per discussion with Hah
-    threshold_min, threshold_max = 1e-5, 1e-4
-    threshold = min(top_k_smallest, threshold_max)
-    threshold = max(threshold, threshold_min)
-    # selected threshold per dicussion with Hah
-    threshold = 1e-3
+    if threshold is None:
+        # Selecting a threshold per discussion with Hah
+        threshold_min, threshold_max = 1e-5, 1e-4
+        threshold = min(top_k_smallest, threshold_max)
+        threshold = max(threshold, threshold_min)
+
     print("threshold:", threshold)
+
+    if threshold == 1e-3:
+        atol_high = 1e-5
+        rtol_high = 1e-2
+        atol_low = 1e-9
+        rtol_low = 2e-2
+    elif threshold == 1e-4:
+        atol_high = 1e-6
+        rtol_high = 2e-2
+        atol_low = 1e-9
+        rtol_low = 2e-2
+    else:
+        raise Exception(f"atol/rtol not set for unknown threshold: {threshold}")
 
     # (0.00065897405 - 3.4e-5) / 0.19473135
     # assert_top_k_allclose(llama_probs, fuji_probs, atol_high, rtol_high)
@@ -487,7 +494,7 @@ def run_gpu_checkpoint_tests(load_true_model=False, reverse=True):
         fuji_model_path="/fsx/czhenguo/Projects/fruitstand/runs/artifacts/axlearn_venv/baselines/10976/axlearn_out/checkpoints/step_00034000",
         trn_checkpoint=False,
     )
-    validate_probs("fuji-7B-v2", "Llama-2-7b-hf")
+    validate_probs("fuji-7B-v2", "Llama-2-7b-hf", threshold=1e-3)
 
     print("Converting and validating Axlearn GPU to HF on 70B...")
     validate_conversion(
@@ -500,7 +507,7 @@ def run_gpu_checkpoint_tests(load_true_model=False, reverse=True):
         use_gqa=True,
         trn_checkpoint=False,
     )
-    validate_probs("fuji-70B-v2", "Llama-2-70b-hf")
+    validate_probs("fuji-70B-v2", "Llama-2-70b-hf", threshold=1e-3)
 
 
 def run_trn_checkpoint_tests(load_true_model=False, reverse=True):
@@ -518,7 +525,7 @@ def run_trn_checkpoint_tests(load_true_model=False, reverse=True):
         texts=texts,
         trn_checkpoint=True,
     )
-    validate_probs("fuji-7B-v2", "Llama-2-7b-hf")
+    validate_probs("fuji-7B-v2", "Llama-2-7b-hf", threshold=1e-3)
 
     print("Converting and validating Axlearn TRN to HF on 70B...")
     validate_conversion(
@@ -531,18 +538,40 @@ def run_trn_checkpoint_tests(load_true_model=False, reverse=True):
         use_gqa=True,
         trn_checkpoint=True,
     )
-    validate_probs("fuji-70B-v2", "Llama-2-70b-hf")
+    validate_probs("fuji-70B-v2", "Llama-2-70b-hf", threshold=1e-4)
+
+
+def run_gpu_checkpoint_round_trip_tests():
+    from axlearn_inference import extend_texts, run_forward_pass
+
+    batch_texts = extend_texts(texts, 8)
+
+    original_probs = run_forward_pass(
+        "fuji-7B-v2",
+        batch_texts,
+        "/fsx/czhenguo/Projects/fruitstand/runs/artifacts/axlearn_venv/baselines/10976/axlearn_out/checkpoints/step_00034000",
+    )
+    round_trip_probs = run_forward_pass(
+        "fuji-7B-v2",
+        batch_texts,
+        "/fsx/czhenguo/Projects/fruitstand/runs/artifacts/transformers_to_axlearn/round_trip/step_00022794",
+    )
+
+    np.testing.assert_allclose(
+        original_probs, round_trip_probs, atol=0.0, rtol=0.0, equal_nan=False
+    )
 
 
 if __name__ == "__main__":
-    validate_probs("fuji-7B-v2", "Llama-2-7b-hf")
-    generate_tolerance_map("fuji-7B-v2", "Llama-2-7b-hf")
+    validate_probs("fuji-7B-v2", "Llama-2-7b-hf", threshold=1e-3)
+    # generate_tolerance_map("fuji-7B-v2", "Llama-2-7b-hf")
     # sample_analysis("fuji-7B-v2", "Llama-2-7b-hf")
-    # validate_probs("fuji-70B-v2", "Llama-2-70b-hf")
-    # run_gpu_checkpoint_tests()
-    # run_trn_checkpoint_tests()
+    # validate_probs("fuji-70B-v2", "Llama-2-70b-hf", threshold=1e-4)
+    # run_gpu_checkpoint_tests(load_true_model=True)
+    # run_trn_checkpoint_tests(load_true_model=True)
     # run_gpu_checkpoint_tests(reverse=False)
     # run_trn_checkpoint_tests(reverse=False)
+    # run_gpu_checkpoint_round_trip_tests()
     # test_top_p()
     # test_top_k()
     # test_get_top_k_smallest()
