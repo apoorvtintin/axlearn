@@ -48,6 +48,7 @@ def get_trainer_config(config_name):
     if isinstance(trainer_config.mesh_shape, MeshShape):
         trainer_config.mesh_shape = infer_mesh_shape(trainer_config.mesh_shape)
 
+    os.environ["DATA_DIR"] = "gs://axlearn-public/tensorflow_datasets"
     return trainer_config
 
 
@@ -677,9 +678,7 @@ def get_fuji_and_llama(
     llama_model_path = llama_model_path or llama_model_name
 
     # Llama-2-7b-hf vs fuji-7B-v2
-    trainer_config_map = c4_trainer.named_trainer_configs()
-    trainer_config_fn = trainer_config_map[fuji_model_name]
-    trainer_config = trainer_config_fn()
+    trainer_config = get_trainer_config(fuji_model_name)
     model_config = trainer_config.model
     model_config.set(name="model")
 
@@ -696,6 +695,7 @@ def get_fuji_and_llama(
             fuji = model_config.instantiate(parent=None)
             prng_key = jax.random.PRNGKey(0)
             # this does not take care of mesh, so will only work with reduced layer numbers
+            # for large models like full 70B, generate a checkpoint first then use inference runner to take care of the mesh
             state = fuji.initialize_parameters_recursively(prng_key=prng_key)
 
         # initialize llama model
@@ -792,6 +792,6 @@ if __name__ == "__main__":
     # validate_weights("fuji-1B-v3", "Llama-3.2-1B")
     # copy_files("Llama-2-7b-hf", "/fsx/czhenguo/Projects/fruitstand/runs/artifacts/axlearn_to_transformers/baseline_34000/")
     generate_random_init_checkpoint(
-        "fuji-7B-v2",
-        "/fsx/czhenguo/Projects/fruitstand/runs/artifacts/axlearn_venv/validation/fuji-7B-v2-4l",
+        "fuji-70B-v2",
+        "/fsx/czhenguo/Projects/fruitstand/runs/artifacts/axlearn_venv/validation/fuji-70B-v2-full",
     )

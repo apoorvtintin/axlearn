@@ -534,7 +534,7 @@ def run_trn_checkpoint_tests(load_true_model=False, reverse=True):
         load_true_model=load_true_model,
         reverse=reverse,
         texts=texts,
-        fuji_model_path="/fsx/czhenguo/Projects/fruitstand/runs/artifacts/241230232345/axlearn_out/checkpoints/step_00000002",
+        fuji_model_path="/fsx/czhenguo/Projects/fruitstand/runs/artifacts/axlearn_venv/baselines/10976/axlearn_out/checkpoints/step_00034000",
         use_gqa=True,
         trn_checkpoint=True,
     )
