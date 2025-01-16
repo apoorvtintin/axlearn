@@ -9,7 +9,7 @@ The fuji models are set up to imitate LLaMA models:
 * LLaMA 2: https://arxiv.org/abs/2307.09288
 * LLaMA 3: https://github.com/meta-llama/llama3
 """
-
+import jax
 import enum
 import functools
 import itertools
@@ -505,7 +505,7 @@ def get_trainer_kwargs(
     elif model_size == "70B":
         trainer_kwargs = dict(
             model_kwargs=dict(
-                num_layers=80,
+                num_layers=4,
                 hidden_dim=128 * 64,
                 num_heads=64,
                 # No GQA support in V1 models, so num_kv_heads is the same as num_heads.
@@ -518,7 +518,7 @@ def get_trainer_kwargs(
             ),
             learner_kwargs=dict(peak_lr=1.5e-4, weight_decay=0.1),
             max_sequence_length=max_sequence_length,
-            train_batch_size=train_batch_size,
+            train_batch_size=16,
             max_step=max_step,
             mesh_shape=mesh_shape_from_axes(fsdp=-1),
             mesh_rules=(
@@ -630,8 +630,8 @@ def get_trainer_kwargs(
                                             ("expert", "fsdp", "seq"),
                                         ),
                                         "input_partition_spec": ("fsdp", None),
-                                        "output_partition_spec": ("fsdp", "model"),
-                                        "embedding_partition_spec": ("model", "fsdp"),
+                                        "embedding_partition_spec": ("model", None),
+                                        "output_partition_spec": ("fsdp", None, None),
                                     },
                                     "model.decoder.lm_head": {
                                         "param_partition_spec": (
@@ -652,6 +652,10 @@ def get_trainer_kwargs(
                                         "input_partition_spec": ("fsdp", "model", None),
                                         "output_partition_spec": ("fsdp", None, None),
                                     },
+                                    # Sequence parallel shardings for feed_forward layer.
+                                    "model.decoder.transformer.layer.feed_forward.linear2": {
+                                        "output_partition_spec": ("fsdp", None, None),
+                                    }
                                 },
                             ),
                         ],
@@ -666,6 +670,7 @@ def get_trainer_kwargs(
     if version == Version.V3_TIKTOKEN:  # tiktoken tokenizer
         model_kwargs["pad_token_id"] = 128004
         model_kwargs["eos_token_id"] = 128001
+    backend = jax.default_backend()
     trainer_kwargs["input_partition_type"] = None if backend != "neuron" else DataPartitionType.BATCH
     trainer_kwargs["model_cfg"] = model_config(**model_kwargs)
     trainer_kwargs["learner_cfg"] = adamw_decoupled_learner_config(

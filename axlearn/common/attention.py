@@ -147,6 +147,7 @@ from axlearn.common.utils import (
     save_and_offload_only_these_names_regex,
     shapes,
     split_prng_key,
+    maybe_shard,
 )
 
 
@@ -2853,6 +2854,7 @@ class TransformerFeedForwardLayer(BaseLayer):
             x = self.dropout1(x)
             x = _linear2(x)
             x = self._remat_name(x, remat_pt2)
+            # x = maybe_shard(x, ("fsdp","model", None))
             x = self.dropout2(x)
             x = self.stochastic_depth(x)
             if cfg.residual_weight != 1:
