@@ -741,7 +741,13 @@ def dispatch_input_batch(
             # Dispatch from physical batch dimensions to logical batch.
             if PHYSICAL_TO_LOGICAL_DISPATCH_KEY in data:
                 dispatch = data.pop(PHYSICAL_TO_LOGICAL_DISPATCH_KEY)
-                return jax.tree.map(lambda x: jnp.einsum("b...,bl->l...", x, dispatch), data)
+                def casted_matmul(x):
+                    x = x.astype(jnp.float32)
+                    x = jnp.einsum("b...,bl->l...", x, dispatch)
+                    x = x.astype(jnp.int32)
+                    return x
+                # return jax.tree.map(lambda x: jnp.einsum("b...,bl->l...", x, dispatch), data)
+                return jax.tree.map(casted_matmul, data)
             for key, value in data.items():
                 data[key] = traverse_and_dispatch(value)
         return data

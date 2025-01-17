@@ -14,6 +14,7 @@ import math
 from collections.abc import Sequence
 from typing import Optional, Protocol, Union
 
+import jax
 import jax.numpy as jnp
 import tensorflow as tf
 from jax.sharding import PartitionSpec
@@ -678,6 +679,8 @@ def get_trainer_config_fn(
                 global_batch_size=train_batch_size,
                 prefetch_buffer_size=tf.data.AUTOTUNE,
                 pad_example_fn=input_tf_data.default_pad_example_fn,
+                global_logical_batch_size=int(len(jax.devices())/4),
+                logical_feed_indices=jax.process_indices(),
             ),
             input_partitioner=config_for_function(input_base.partition_by_path_rank).set(
                 path_rank_to_partition={
@@ -690,7 +693,11 @@ def get_trainer_config_fn(
         )
         cfg.evalers = {}
         for name, evaler_cfg in evalers.items():
-            evaler_cfg.input.batcher.set(global_batch_size=eval_batch_size or train_batch_size)
+            evaler_cfg.input.batcher.set(global_batch_size=eval_batch_size or train_batch_size,
+                                         pad_example_fn=input_tf_data.default_pad_example_fn,
+                                         global_logical_batch_size=int(len(jax.devices())/4),
+                                         logical_feed_indices=jax.process_indices(),
+                                        )
             evaler_cfg.set(
                 eval_policy=config_for_function(eval_every_n_steps_policy).set(
                     n=eval_every_n_steps,
