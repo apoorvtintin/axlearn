@@ -12,7 +12,7 @@ The fuji models are set up to imitate LLaMA models:
 import jax
 import enum
 import functools
-import itertools
+import itertools\
 from typing import Any, Optional, Union
 
 from jax.ad_checkpoint import checkpoint_policies as jax_remat_policies
@@ -505,7 +505,7 @@ def get_trainer_kwargs(
     elif model_size == "70B":
         trainer_kwargs = dict(
             model_kwargs=dict(
-                num_layers=4,
+                num_layers=80,
                 hidden_dim=128 * 64,
                 num_heads=64,
                 # No GQA support in V1 models, so num_kv_heads is the same as num_heads.
@@ -518,7 +518,7 @@ def get_trainer_kwargs(
             ),
             learner_kwargs=dict(peak_lr=1.5e-4, weight_decay=0.1),
             max_sequence_length=max_sequence_length,
-            train_batch_size=16,
+            train_batch_size=int(len(jax.devices())/4),
             max_step=max_step,
             mesh_shape=mesh_shape_from_axes(fsdp=-1),
             mesh_rules=(
