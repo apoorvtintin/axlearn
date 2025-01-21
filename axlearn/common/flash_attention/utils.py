@@ -279,9 +279,6 @@ def flash_attention_implementation(
             )
 
         elif backend == "neuron":
-            from axlearn.common.flash_attention.neuron_attention import (
-                flash_attention as neuron_flash_attention,
-            )
 
             key = _repeat_kv_heads(query.shape[2], key)
             value = _repeat_kv_heads(query.shape[2], value)
@@ -290,15 +287,11 @@ def flash_attention_implementation(
                 bias, CausalAttentionBias, SegmentIdAttentionBias
             )
 
-            # mask, segment_ids, explicit_bias = split(
-            #     bias, MaskFnAttentionBias, SegmentIdAttentionBias
-            # )
-            # shard_map-decorated function needs to be jitted.
             if not isinstance(segment_ids, ZeroAttentionBias):
                 logging.info("segment_ids value is %s", segment_ids)
-                raise Exception("Sequence Packing is not supported on Neuron backend")
+                raise ValueError("Sequence Packing is not supported on Neuron backend")
             return neuron_flash_attention(
-                query, key, value, bias=explicit_bias.value(), causal=causal.has_value(), softmax_scale=softmax_scale)
+                query, key, value, bias=explicit_bias.value(), causal=causal.has_value(), softmax_scale=softmax_scale, dropout_rate=dropout_rate,)
 
 
         elif backend in ("cpu", "xla"):
