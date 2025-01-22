@@ -523,6 +523,7 @@ def run_trn_checkpoint_tests(load_true_model=False, reverse=True):
         load_true_model=load_true_model,
         reverse=reverse,
         texts=texts,
+        fuji_model_path="/fsx/czhenguo/Projects/fruitstand/runs/artifacts/axlearn_venv/validation/fuji-7B-v2/step_00000020",
         trn_checkpoint=True,
     )
     validate_probs("fuji-7B-v2", "Llama-2-7b-hf", threshold=1e-3)

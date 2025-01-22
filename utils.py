@@ -124,7 +124,7 @@ converted_tokenizer_path = "fuji_tokenizer"
 
 
 def convert_tokenizer(
-    sentencepiece_model_path="axlearn/data/tokenizers/sentencepiece/bpe_32k_c4.model",
+    sentencepiece_model_path="bpe_32k_c4.model",
 ):
     if os.path.isdir(converted_tokenizer_path):
         return

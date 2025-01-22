@@ -1,9 +1,7 @@
 import sentencepiece as spm
 from transformers import PreTrainedTokenizerFast, PreTrainedTokenizer, AutoTokenizer, LlamaTokenizer
-from mistral_common.tokens.tokenizers.sentencepiece import SentencePieceTokenizer
 
-sentencepiece_tokenizer_path = "/fsx/czhenguo/Projects/fruitstand/axlearn/axlearn/data/tokenizers/sentencepiece/bpe_32k_c4.model"
-# sentencepiece_tokenizer_path = "/fsx/czhenguo/Projects/fruitstand/axlearn/axlearn/data/tokenizers/sentencepiece/bpe_32k_c4.v1model"
+sentencepiece_tokenizer_path = "bpe_32k_c4.model"
 
 
 def convert_tokenizer_transformers_4_47_1():
@@ -121,6 +119,7 @@ def run_c4_tokenizer(texts):
 
 
 def run_mistral_tokenizer(texts):
+    from mistral_common.tokens.tokenizers.sentencepiece import SentencePieceTokenizer
     tokenizer_path = sentencepiece_tokenizer_path
     tokenizer = SentencePieceTokenizer(model_path=tokenizer_path)
     for text in texts:
