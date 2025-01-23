@@ -56,12 +56,12 @@ def _find_target_module(module_name: str, cfg: SpmdTrainer.Config) -> _FoundModu
     key_in_parent = None
     parent_module = None
 
-    for target_module in target_modules:
-        if not hasattr(curr_module, target_module):
-            raise ValueError(f"{target_module} is not found in {curr_module}.")
+    for target_module_key in target_modules:
+        if not hasattr(curr_module, target_module_key):
+            raise ValueError(f"{target_module_key} is not found in {curr_module}.")
         parent_module = curr_module
-        key_in_parent = target_module
-        curr_module = getattr(curr_module, target_module)
+        key_in_parent = target_module_key
+        curr_module = getattr(curr_module, target_module_key)
     return _FoundModule(
         module=curr_module, parent_module=parent_module, key_in_parent=key_in_parent
     )
@@ -198,14 +198,23 @@ class ModelConfigModifier(ConfigModifier):
                 (e.g. `model.decoder.transformer.layer`) to a Config.
         """
 
-        model_cfg_modifications: Dict[str, Callable[[ConfigBase], ConfigBase]] = {}
+        # model_cfg_modifications: Dict[str, Callable[[ConfigBase], ConfigBase]] = {}
+        target_config: Required[str] = REQUIRED
+        modification: Required[Callable[[ConfigBase], ConfigBase]] = REQUIRED
 
     def __init__(self, cfg: Config):
         super().__init__(cfg)
-        self._model_cfg_modifications = self.config.model_cfg_modifications
+        # self._model_cfg_modifications = self.config.model_cfg_modifications
+        self._target_config = self.config.target_config
+        self._modification = self.config.modification
 
     def _merge_configs(self, target_cfg: ConfigBase, found_module: ConfigBase) -> ConfigBase:
         """Merge configurations from the config being replaced on a best effort basis.
+
+        Merge Rules:
+            - Klass is not changed, use target cfg
+            - If field exists in both then use from class being replaced
+            - Otherwise keep the value from target_cfg
 
         Args:
             target_cfg: configuration that will replace found_module.
@@ -236,16 +245,10 @@ class ModelConfigModifier(ConfigModifier):
             The modified trainer config.
         """
 
-        # Iterate over modules in the mapping, modules are sorted based on module name length.
-        # This ensures parent is modified before children to avoid missing modifications.
-        for module_name, model_cfg in sorted(
-            self._model_cfg_modifications.items(), key=lambda item: len(item[0])
-        ):
-            found_module = _find_target_module(module_name, cfg)
-
-            model_cfg = self._merge_configs(model_cfg, found_module)
-            # Replace in the parent config
-            setattr(found_module.parent_module, found_module.key_in_parent, model_cfg)
+        found_module = _find_target_module(self._target_config, cfg)
+        self._modification = self._merge_configs(self._modification, found_module)
+        # Replace in the parent config
+        setattr(found_module.parent_module, found_module.key_in_parent, self._modification)
         return cfg
 
 

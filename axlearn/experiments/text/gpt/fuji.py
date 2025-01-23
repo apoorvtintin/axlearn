@@ -14,7 +14,6 @@ import enum
 import functools
 import itertools
 from typing import Any, Optional, Union
-import jax
 
 from jax.ad_checkpoint import checkpoint_policies as jax_remat_policies
 
@@ -157,19 +156,59 @@ def get_trainer_kwargs(
     rope_theta = ROPE_THETA[version]
 
     # TRN2 specific model config modifications
-    trn2_model_modifications = {
+    trn2_model_modifications = [
         # Neuron compiler has a module to detect repeating blocks and reuse them during compilation.
         # So compile time does not grow with the number of layers.
-        "model.decoder.transformer": StackedTransformerLayer.default_config(),
-        **(
-            {}
-            if version == Version.V1
-            else {
-                "model.decoder.transformer.layer.self_attention.attention.input_linear"
-                ".input_linear": GroupedQKVLinear.default_config()
-            }
+        ModelConfigModifier.default_config().set(
+            target_config="model.decoder.transformer",
+            modification=StackedTransformerLayer.default_config(),
+        )
+    ]
+    
+    if version == Version.V3 or (model_size == "70B" and version != Version.V1):
+        trn2_model_modifications.append(
+            ModelConfigModifier.default_config().set(
+                target_config="model.decoder.transformer.layer.self_attention.attention."
+                "input_linear.input_linear",
+                modification=GroupedQKVLinear.default_config(),
+            )
+        )
+
+    trn2_partition_spec_modifications = [
+        PartitionSpecModifier.default_config().set(
+            partition_specs={
+                # Vocab parallel embeddings sharding from Megatron LM.
+                "model.decoder.emb.token_emb": {
+                    "param_partition_spec": (
+                        "model",
+                        ("expert", "fsdp", "seq"),
+                    ),
+                    "input_partition_spec": ("fsdp", None),
+                    "output_partition_spec": ("fsdp", "model"),
+                    "embedding_partition_spec": ("model", "fsdp"),
+                },
+                "model.decoder.lm_head": {
+                    "param_partition_spec": (
+                        "model",
+                        ("expert", "fsdp", "seq"),
+                    ),
+                },
+                # Sequence parallel shardings for norms.
+                "model.decoder.transformer.layer.self_attention.norm": {
+                    "input_partition_spec": ("fsdp", "model", None),
+                    "output_partition_spec": ("fsdp", None, None),
+                },
+                "model.decoder.transformer.layer.feed_forward.norm": {
+                    "input_partition_spec": ("fsdp", "model", None),
+                    "output_partition_spec": ("fsdp", None, None),
+                },
+                "model.decoder.output_norm": {
+                    "input_partition_spec": ("fsdp", "model", None),
+                    "output_partition_spec": ("fsdp", None, None),
+                },
+            },
         ),
-    }
+    ]
 
     offload_dots_saveable_policy = config_for_function(
         extended_checkpoint_policies.offload_dots_saveable
@@ -234,9 +273,8 @@ def get_trainer_kwargs(
                                 # Each TRN2 chip has 4 XLA cores.
                                 mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
                             ),
-                            ModelConfigModifier.default_config().set(
-                                model_cfg_modifications=trn2_model_modifications
-                            ),
+                            *trn2_model_modifications,
+                            *trn2_partition_spec_modifications,
                         ],
                     ),
                 ),
@@ -269,9 +307,8 @@ def get_trainer_kwargs(
                                 # Each TRN2 chip has 4 XLA cores.
                                 mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
                             ),
-                            ModelConfigModifier.default_config().set(
-                                model_cfg_modifications=trn2_model_modifications
-                            ),
+                            *trn2_model_modifications,
+                            *trn2_partition_spec_modifications,
                         ],
                     ),
                 ),
@@ -398,9 +435,8 @@ def get_trainer_kwargs(
                                 # Each TRN2 chip has 4 XLA cores.
                                 mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
                             ),
-                            ModelConfigModifier.default_config().set(
-                                model_cfg_modifications=trn2_model_modifications
-                            ),
+                            *trn2_model_modifications,
+                            *trn2_partition_spec_modifications,
                         ],
                     ),
                 ),
@@ -493,9 +529,8 @@ def get_trainer_kwargs(
                                 # Each TRN2 chip has 4 XLA cores.
                                 mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
                             ),
-                            ModelConfigModifier.default_config().set(
-                                model_cfg_modifications=trn2_model_modifications
-                            ),
+                            *trn2_model_modifications,
+                            *trn2_partition_spec_modifications,
                         ],
                     ),
                 ),
@@ -517,7 +552,7 @@ def get_trainer_kwargs(
             ),
             learner_kwargs=dict(peak_lr=1.5e-4, weight_decay=0.1),
             max_sequence_length=max_sequence_length,
-            train_batch_size=int(len(jax.devices())),
+            train_batch_size=8,
             max_step=max_step,
             mesh_shape=mesh_shape_from_axes(fsdp=-1),
             mesh_rules=(
@@ -617,46 +652,8 @@ def get_trainer_kwargs(
                                     ),
                                 }
                             ),
-                            ModelConfigModifier.default_config().set(
-                                model_cfg_modifications=trn2_model_modifications
-                            ),
-                            PartitionSpecModifier.default_config().set(
-                                partition_specs={
-                                    # Vocab parallel embeddings sharding from Megatron LM.
-                                    "model.decoder.emb.token_emb": {
-                                        "param_partition_spec": (
-                                            "model",
-                                            ("expert", "fsdp", "seq"),
-                                        ),
-                                        "input_partition_spec": ("fsdp", None),
-                                        "embedding_partition_spec": ("model", None),
-                                        "output_partition_spec": ("fsdp", None, None),
-                                    },
-                                    "model.decoder.lm_head": {
-                                        "param_partition_spec": (
-                                            "model",
-                                            ("expert", "fsdp", "seq"),
-                                        ),
-                                    },
-                                    # Sequence parallel shardings for norms.
-                                    "model.decoder.transformer.layer.self_attention.norm": {
-                                        "input_partition_spec": ("fsdp", "model", None),
-                                        "output_partition_spec": ("fsdp", None, None),
-                                    },
-                                    "model.decoder.transformer.layer.feed_forward.norm": {
-                                        "input_partition_spec": ("fsdp", "model", None),
-                                        "output_partition_spec": ("fsdp", None, None),
-                                    },
-                                    "model.decoder.output_norm": {
-                                        "input_partition_spec": ("fsdp", "model", None),
-                                        "output_partition_spec": ("fsdp", None, None),
-                                    },
-                                    # Sequence parallel shardings for feed_forward layer.
-                                    "model.decoder.transformer.layer.feed_forward.linear2": {
-                                        "output_partition_spec": ("fsdp", None, None),
-                                    },
-                                },
-                            ),
+                            *trn2_model_modifications,
+                            *trn2_partition_spec_modifications,
                         ],
                     ),
                 ),
