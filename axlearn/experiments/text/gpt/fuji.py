@@ -164,7 +164,6 @@ def get_trainer_kwargs(
             modification=StackedTransformerLayer.default_config(),
         )
     ]
-    
     if version == Version.V3 or (model_size == "70B" and version != Version.V1):
         trn2_model_modifications.append(
             ModelConfigModifier.default_config().set(
@@ -187,12 +186,6 @@ def get_trainer_kwargs(
                     "output_partition_spec": ("fsdp", None, None),
                     "embedding_partition_spec": ("model", None),
                 },
-                "model.decoder.lm_head": {
-                    "param_partition_spec": (
-                        "model",
-                        ("expert", "fsdp", "seq"),
-                    ),
-                },
                 # Sequence parallel shardings for norms.
                 "model.decoder.transformer.layer.self_attention.norm": {
                     "input_partition_spec": ("fsdp", "model", None),
@@ -208,6 +201,19 @@ def get_trainer_kwargs(
                 },
                 "model.decoder.transformer.layer.feed_forward.linear2": {
                     "output_partition_spec": ("fsdp", None, None),
+                },
+            },
+        ),
+    ]
+
+    lm_head_partition_spec = [
+       PartitionSpecModifier.default_config().set(
+            partition_specs={
+                "model.decoder.lm_head": {
+                    "param_partition_spec": (
+                        "model",
+                        ("expert", "fsdp", "seq"),
+                    ),
                 },
             },
         ),
@@ -533,7 +539,7 @@ def get_trainer_kwargs(
                                 mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
                             ),
                             *trn2_model_modifications,
-                            *trn2_partition_spec_modifications,
+                            *(trn2_partition_spec_modifications + lm_head_partition_spec),
                         ],
                     ),
                 ),
@@ -645,7 +651,7 @@ def get_trainer_kwargs(
                                             names_which_can_be_saved="|".join(
                                                 [
                                                     RematRegexSavePatterns.QKV_PROJ.value,
-                                                    RematRegexSavePatterns.LINEAR1_X.value if (jax.device_count() > (64 * 8)) else RematRegexSavePatterns.LINEAR1_0.value,
+                                                    RematRegexSavePatterns.LINEAR1_X.value,
                                                 ]
                                             ),
                                             names_which_can_be_offloaded=None,
@@ -656,7 +662,7 @@ def get_trainer_kwargs(
                                 }
                             ),
                             *trn2_model_modifications,
-                            *trn2_partition_spec_modifications,
+                            *(trn2_partition_spec_modifications + lm_head_partition_spec),
                         ],
                     ),
                 ),
