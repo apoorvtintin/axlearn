@@ -560,6 +560,8 @@ def evaler_config_dict(
         )
 
     evalers = {}
+    import os
+    fractional = int(os.environ.get('FRACTIONAL', '0'))
     for dataset_name, input_source_config in input_source_configs.items():
         evaler_input = input_tf_data.Input.default_config().set(
             is_training=False,
@@ -568,6 +570,8 @@ def evaler_config_dict(
             batcher=config_for_function(input_tf_data.batch).set(
                 prefetch_buffer_size=tf.data.AUTOTUNE,
                 pad_example_fn=input_tf_data.default_pad_example_fn,
+                global_logical_batch_size=int(len(jax.devices())/4) if fractional == 1 else None,
+                logical_feed_indices=jax.process_indices() if fractional == 1 else None,
             ),
         )
         metric_calculator = (

@@ -147,6 +147,9 @@ def get_trainer_kwargs(
 
     rope_theta = ROPE_THETA[version]
 
+    import os
+    fractional = int(os.environ.get('FRACTIONAL', '0'))
+
     # TRN2 specific model config modifications
     trn2_model_modifications = [
         # Neuron compiler has a module to detect repeating blocks and reuse them during compilation.
@@ -553,7 +556,7 @@ def get_trainer_kwargs(
             ),
             learner_kwargs=dict(peak_lr=1.5e-4, weight_decay=0.1),
             max_sequence_length=max_sequence_length,
-            train_batch_size=int(len(jax.devices())/4),
+            train_batch_size=int(len(jax.devices())/4) if fractional == 0 else int(len(jax.devices())),
             max_step=max_step,
             mesh_shape=mesh_shape_from_axes(fsdp=-1),
             mesh_rules=(
@@ -665,7 +668,8 @@ def get_trainer_kwargs(
     model_kwargs = trainer_kwargs.pop("model_kwargs")
     model_kwargs.setdefault("vocab_size", vocab_size)
     backend = jax.default_backend()
-    trainer_kwargs["input_partition_type"] = None if backend != "neuron" else DataPartitionType.BATCH
+    if fractional == 0:
+        trainer_kwargs["input_partition_type"] = None if backend != "neuron" else DataPartitionType.BATCH
     trainer_kwargs["model_cfg"] = model_config(**model_kwargs)
     trainer_kwargs["learner_cfg"] = adamw_decoupled_learner_config(
         max_step=trainer_kwargs["max_step"],
