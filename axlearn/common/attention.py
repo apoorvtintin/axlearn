@@ -4008,6 +4008,7 @@ class RematRegexSavePatterns(enum.Enum):
     O_PROJ = r".*o_proj"
     CONTEXT = r".*context"
     LINEAR1_X = r".*linear1_[01]"
+    LINEAR1_0 = r".*linear1_[0]"
     LINEAR2_X = r".*linear2_[01]"
     # This is called native attention because the "context" remat point only exists when using
     # native attention, e.g. `MultiheadAttention` or `GroupedQueryAttention`.

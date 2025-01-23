@@ -680,7 +680,7 @@ def get_trainer_config_fn(
                 global_batch_size=train_batch_size,
                 prefetch_buffer_size=tf.data.AUTOTUNE,
                 pad_example_fn=input_tf_data.default_pad_example_fn,
-                global_logical_batch_size=int(len(jax.devices())/4 * int(os.environ.get('MICROBATCH', '1'))),
+                global_logical_batch_size=int((len(jax.devices())/4 )* int(os.environ.get('MICROBATCH', '1'))),
                 logical_feed_indices=jax.process_indices(),
             ),
             input_partitioner=config_for_function(input_base.partition_by_path_rank).set(
