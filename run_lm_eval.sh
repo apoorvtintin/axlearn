@@ -20,5 +20,4 @@ python -m lm_eval \
        --model_args model=$model_path,trust_remote_code=True,base_url=http://localhost:${port}/v1/completions,tokenized_requests=False,tokenizer_backend="huggingface",use_fast_tokenizer=False,add_bos_token=True,num_concurrent=${max_concurrent_req} \
        --log_samples \
        --output_path ${results_dir} \
-       --limit 10\
        --verbosity DEBUG
