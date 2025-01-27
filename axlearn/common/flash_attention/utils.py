@@ -17,6 +17,7 @@ from axlearn.common.attention_bias import (
     MaskFnAttentionBias,
     SegmentIdAttentionBias,
     TensorAttentionBias,
+    ZeroAttentionBias,
     split,
 )
 from axlearn.common.flash_attention.gpu_attention import cudnn_dot_product_attention
