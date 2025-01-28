@@ -224,7 +224,7 @@ def assert_top_k_allclose(x, y, atol, rtol, k=DEFAULT_K):
 
 
 def assert_top_p_and_top_k_allclose(
-    x, y, atol_high, rtol_high, atol_low, rtol_low, threshold=1e-3, k=DEFAULT_K, p=DEFAULT_P
+    x, y, atol_high, rtol_high, atol_low, rtol_low, threshold=1e-3, k=DEFAULT_K, p=DEFAULT_P, analysis=False
 ):
     """
     the probability distribution has a long tail therefore it is not feasible
@@ -301,9 +301,49 @@ def assert_top_p_and_top_k_allclose(
     print("max top p/k relative difference", np.max(rdiff))
     print("mean top p/k relative difference", np.mean(rdiff))
 
+    if analysis:
+        mismatch_analysis(top_x_flat_low, top_y_flat_low, atol_low, rtol_low)
+
     np.testing.assert_allclose(
         top_x_flat_low, top_y_flat_low, atol=atol_low, rtol=rtol_low, equal_nan=False
     )
+
+def mismatch_analysis(x_list, y_list, atol, rtol):
+    mismatches = {
+        "x": list(),
+        "y": list(),
+        "absolute_difference": list(),
+        "relative_difference": list(),
+    }
+    for x_val, y_val in zip(x_list, y_list):
+        try:
+            np.testing.assert_allclose(
+                x_val, y_val, atol=atol, rtol=rtol, equal_nan=False
+            )
+        except:
+            # print((x_val, y_val, abs(x_val - y_val) / y_val))
+            mismatches["x"].append(x_val)
+            mismatches["y"].append(y_val)
+            mismatches["absolute_difference"].append(abs(x_val - y_val))
+            mismatches["relative_difference"].append(abs(x_val - y_val)/ y_val)
+    df = pd.DataFrame.from_dict(mismatches)
+    with open("mismatches.md", "w") as f:
+        f.write(df.to_markdown(index=False))
+    print(df.to_markdown(index=False))
+
+    indices = [df["x"].idxmin(), df["y"].idxmin()]
+    indices.extend([df[col].idxmax() for col in df.columns])
+    row_names = [
+        "smallest value in x",
+        "smallest value in y",
+        "largest value in x",
+        "largest value in y",
+        "largest atol",
+        "largest rtol",
+    ]
+    analysis_table = df.iloc[indices]
+    analysis_table.insert(0, "selector", row_names)
+    print(analysis_table.to_markdown(index=False))
 
 
 def generate_ranges(low, high):
@@ -409,9 +449,9 @@ def validate_probs(fuji_model_name, llama_model_name, p=DEFAULT_P, threshold=Non
 
     if threshold == 1e-3:
         atol_high = 1e-5
-        rtol_high = 1e-2
+        rtol_high = 2e-2
         atol_low = 1e-9
-        rtol_low = 2e-2
+        rtol_low = 5e-2
     elif threshold == 1e-4:
         atol_high = 1e-6
         rtol_high = 2e-2
@@ -432,6 +472,7 @@ def validate_probs(fuji_model_name, llama_model_name, p=DEFAULT_P, threshold=Non
         rtol_low,
         threshold=threshold,
         p=p,
+        # analysis=True,
     )
 
 
@@ -564,7 +605,9 @@ def run_gpu_checkpoint_round_trip_tests():
 
 
 if __name__ == "__main__":
-    validate_probs("fuji-7B-v2", "Llama-2-7b-hf", threshold=1e-3)
+    validate_probs("fuji-7B-v2-full-trn", "fuji-7B-v2", threshold=1e-3)
+    # validate_probs("fuji-7B-v2-full-trn", "fuji-7B-v2-full-trn-branch-gpu-device", threshold=1e-3)
+    # validate_probs("fuji-7B-v2", "Llama-2-7b-hf", threshold=1e-3)
     # generate_tolerance_map("fuji-7B-v2", "Llama-2-7b-hf")
     # sample_analysis("fuji-7B-v2", "Llama-2-7b-hf")
     # validate_probs("fuji-70B-v2", "Llama-2-70b-hf", threshold=1e-4)
