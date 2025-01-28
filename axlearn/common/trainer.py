@@ -1033,7 +1033,7 @@ class SpmdTrainer(Module):
             A dict containing 'loss' and 'aux' outputs. If force_run_evals is a set,
             force run the evalers in the set and return 'evaler_summaries' output.
         """
-        logging.info("batches after local to global array shape %s, value %s", input_batch['input_ids'].shape, input_batch['input_ids'])
+        logging.info("batches after local to global array shape %s, value %s", input_batch['input_ids'].shape, input_batch['input_ids'].addressable_shards)
         with jax.profiler.StepTraceAnnotation("train", step_num=self.step):
             run_with_xsc = self._xsc_check_policy and self._xsc_check_policy(self.step)
             compiled_train_step_fn = self._get_compiled_train_step_fn(
@@ -1088,7 +1088,7 @@ class SpmdTrainer(Module):
         return evaler_summaries
 
     def _pjit_train_step(self) -> jax.stages.Wrapped:
-        return pjit(
+        return debug_callback(pjit(
             self._train_step,
             in_shardings=(
                 self._trainer_state_partition_specs,
@@ -1103,7 +1103,7 @@ class SpmdTrainer(Module):
                 ),
             ),
             donate_argnums=(0,),  # donate the state
-        )
+        ))
 
     def compile_train_step(
         self,
@@ -1142,7 +1142,7 @@ class SpmdTrainer(Module):
             # pjit currently requires all parameters to be specified as positional args.
             lowered_train_step = jit_train_step.lower(trainer_state, input_batch)
             return lowered_train_step.compile(compiler_options=compiler_options)
-    @debug_callback
+    # @debug_callback
     def _train_step(
         self,
         state: TrainerState,
