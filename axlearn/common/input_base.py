@@ -220,8 +220,10 @@ class Input(Module):
                 jax.tree.map(check_per_feed_batch, input_batch)
                 should_validate = False
 
+            logging.info("batches before logical_to_physical_batch shape %s, value %s", input_batch['input_ids'].shape, input_batch)
             if "input_dispatcher" in self.children:
                 input_batch = self.input_dispatcher.logical_to_physical_batch(input_batch)
+            logging.info("batches after logical_to_physical_batch shape %s, value %s", input_batch['input_ids'].shape, input_batch)
             yield input_batch
 
     def dispatch_global_batch(

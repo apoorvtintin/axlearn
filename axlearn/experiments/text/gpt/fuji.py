@@ -548,7 +548,7 @@ def get_trainer_kwargs(
     elif model_size == "70B":
         trainer_kwargs = dict(
             model_kwargs=dict(
-                num_layers=80,
+                num_layers=8,
                 hidden_dim=128 * 64,
                 num_heads=64,
                 # No GQA support in V1 models, so num_kv_heads is the same as num_heads.
@@ -561,9 +561,11 @@ def get_trainer_kwargs(
             ),
             learner_kwargs=dict(peak_lr=1.5e-4, weight_decay=0.1),
             max_sequence_length=max_sequence_length,
-            train_batch_size=int(len(jax.devices())),
+            train_batch_size=int(len(jax.devices())/4),
             max_step=max_step,
             mesh_shape=mesh_shape_from_axes(fsdp=-1),
+            eval_every_n_steps=1500,
+            save_every_n_steps=500,
             mesh_rules=(
                 # TPU V5e maximum per device batch is 1.
                 # with all activation offloading, HBM usage: 14.6GB/chip.
@@ -800,6 +802,7 @@ def trainer_configs(
             ),
             **kwargs,
         )
+        # config_map[config_name]().input.batcher.feed_batch_size = 16
         if model_size == "test":
 
             def wrapper(config_name: str = config_name):

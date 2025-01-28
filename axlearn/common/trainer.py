@@ -18,7 +18,7 @@ from absl import logging
 from jax import numpy as jnp
 from jax.experimental import multihost_utils
 from jax.experimental.pjit import pjit
-
+from jax_neuronx.experimental import debug_callback
 from axlearn.common import file_system as fs
 from axlearn.common import measurement, utils
 from axlearn.common.base_layer import ParameterSpec
@@ -577,6 +577,7 @@ class SpmdTrainer(Module):
 
                     self._step = self._step + 1
                     self.vlog(3, "Start step %s", self.step)
+                    logging.info("batches before local to global array shape %s, value %s", input_batch['input_ids'].shape, input_batch)
                     output = self._run_step(
                         utils.host_to_global_device_array(input_batch),
                         force_run_evals=(
@@ -943,9 +944,9 @@ class SpmdTrainer(Module):
             ckpt_state = self._trainer_state._asdict()
             if cfg.save_input_iterator:
                 ckpt_state["input_iter"] = self._input_iter
-            self.checkpointer.save(
-                step=self.step, state=ckpt_state, evaler_summaries=evaler_summaries
-            )
+            # self.checkpointer.save(
+            #     step=self.step, state=ckpt_state, evaler_summaries=evaler_summaries
+            # )
 
     def _restore_from_builder(self) -> Optional[TrainerStateBuilder.State]:
         """Restores trainer state by building it with init_state_builder."""
@@ -1032,6 +1033,7 @@ class SpmdTrainer(Module):
             A dict containing 'loss' and 'aux' outputs. If force_run_evals is a set,
             force run the evalers in the set and return 'evaler_summaries' output.
         """
+        logging.info("batches after local to global array shape %s, value %s", input_batch['input_ids'].shape, input_batch['input_ids'])
         with jax.profiler.StepTraceAnnotation("train", step_num=self.step):
             run_with_xsc = self._xsc_check_policy and self._xsc_check_policy(self.step)
             compiled_train_step_fn = self._get_compiled_train_step_fn(
@@ -1140,7 +1142,7 @@ class SpmdTrainer(Module):
             # pjit currently requires all parameters to be specified as positional args.
             lowered_train_step = jit_train_step.lower(trainer_state, input_batch)
             return lowered_train_step.compile(compiler_options=compiler_options)
-
+    @debug_callback
     def _train_step(
         self,
         state: TrainerState,
@@ -1148,10 +1150,13 @@ class SpmdTrainer(Module):
     ) -> tuple[TrainerState, NestedTensor]:
         cfg = self.config
         # Shard and (possibly) dispatch the input batch.
+        # jax.debug.print("")
+        jax.debug.print("before dispatch_global_batch {input_batch}", input_batch=input_batch)
         if hasattr(self.input, "dispatch_global_batch"):
             input_batch = self.input.dispatch_global_batch(
                 input_batch, batch_axis_names=cfg.batch_axis_names
             )
+        jax.debug.print("after dispatch_global_batch {input_batch}", input_batch=input_batch)
 
         new_prng_key, param_noise_key, forward_key, learner_key = jax.random.split(
             state.prng_key, 4

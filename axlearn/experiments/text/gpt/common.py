@@ -60,6 +60,7 @@ from axlearn.common.layers import BaseNormalizationLayer, set_bias_recursively, 
 from axlearn.common.optimizer_base import PartitionedGradientTransformation
 from axlearn.common.param_init import PARAM_REGEXP_WEIGHT, DefaultInitializer, WeightInitializer
 from axlearn.common.summary_writer import BaseWriter
+from axlearn.common.input_dispatch import InputDispatcher
 from axlearn.common.trainer import MeshShape, SpmdTrainer
 from axlearn.common.utils import HybridMeshShape, Nested, get_data_dir
 from axlearn.experiments.text.common import DataMixtureComponent, tfds_text_source
@@ -673,6 +674,9 @@ def get_trainer_config_fn(
         cfg.max_step = max_step
         cfg.train_dtype = STEP_DTYPE
         cfg.input = input_tf_data.Input.default_config().set(
+            input_dispatcher=InputDispatcher.default_config().set(
+                global_logical_batch_size=train_batch_size,
+            ),
             is_training=True,
             source=train_input_source,
             processor=config_for_function(input_tf_data.identity),
@@ -680,8 +684,6 @@ def get_trainer_config_fn(
                 global_batch_size=train_batch_size,
                 prefetch_buffer_size=tf.data.AUTOTUNE,
                 pad_example_fn=input_tf_data.default_pad_example_fn,
-                global_logical_batch_size=int((len(jax.devices())/4 )* int(os.environ.get('MICROBATCH', '1'))),
-                logical_feed_indices=jax.process_indices(),
             ),
             input_partitioner=config_for_function(input_base.partition_by_path_rank).set(
                 path_rank_to_partition={
@@ -692,13 +694,36 @@ def get_trainer_config_fn(
                 }
             ),
         )
+        batcher = config_for_function(input_tf_data.per_feed_batch)
+        batcher.set(
+            # Copy values from cfg.input.batcher.
+            **{
+                k: getattr(cfg.input.batcher, k)
+                for k in batcher.keys()
+                if k not in ("fn", "feed_batch_size")
+            },
+            feed_batch_size=16,
+        )
+        cfg.input.batcher = batcher
+        
         cfg.evalers = {}
         for name, evaler_cfg in evalers.items():
-            evaler_cfg.input.batcher.set(global_batch_size=eval_batch_size or train_batch_size,
-                                         pad_example_fn=input_tf_data.default_pad_example_fn,
-                                         global_logical_batch_size=int(len(jax.devices())/4),
-                                         logical_feed_indices=jax.process_indices(),
-                                        )
+            evaler_cfg.input.input_dispatcher = InputDispatcher.default_config().set(
+                global_logical_batch_size=train_batch_size
+                if eval_batch_size is None
+                else eval_batch_size
+            )
+            eval_batcher = batcher.clone()
+            eval_batcher.set(
+                # Copy values from cfg.input.batcher.
+                **{
+                    k: getattr(evaler_cfg.input.batcher, k)
+                    for k in eval_batcher.keys()
+                    if k not in ("fn", "feed_batch_size")
+                }
+            )
+            evaler_cfg.input.batcher = eval_batcher
+
             evaler_cfg.set(
                 eval_policy=config_for_function(eval_every_n_steps_policy).set(
                     n=eval_every_n_steps,
@@ -708,7 +733,6 @@ def get_trainer_config_fn(
             cfg.evalers[name] = evaler_cfg
         # Summaries and checkpoints.
         cfg.checkpointer.save_policy = config_for_function(every_n_steps_and_last_policy).set(
-            n=save_every_n_steps or min(eval_every_n_steps, 5_000),
             max_step=max_step,
         )
         cfg.checkpointer.keep_every_n_steps = min(max_step, keep_every_n_steps)

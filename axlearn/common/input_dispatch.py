@@ -13,7 +13,8 @@ from jax import numpy as jnp
 from axlearn.common.config import REQUIRED, Required, config_class
 from axlearn.common.module import Module
 from axlearn.common.utils import PHYSICAL_TO_LOGICAL_DISPATCH_KEY, Nested, Tensor
-
+import sys
+jax.numpy.set_printoptions(threshold=sys.maxsize)
 
 class InputDispatcher(Module):
     """A Module to dispatch per-feed logical input batches to global logical batches on device.
