@@ -577,7 +577,7 @@ class SpmdTrainer(Module):
 
                     self._step = self._step + 1
                     self.vlog(3, "Start step %s", self.step)
-                    logging.info("batches before local to global array shape %s, value %s", input_batch['input_ids'].shape, input_batch)
+                    # logging.info("batches before local to global array shape %s, value %s", input_batch['input_ids'].shape, input_batch)
                     output = self._run_step(
                         utils.host_to_global_device_array(input_batch),
                         force_run_evals=(
@@ -1033,7 +1033,7 @@ class SpmdTrainer(Module):
             A dict containing 'loss' and 'aux' outputs. If force_run_evals is a set,
             force run the evalers in the set and return 'evaler_summaries' output.
         """
-        logging.info("batches after local to global array shape %s, value %s", input_batch['input_ids'].shape, input_batch['input_ids'].addressable_shards)
+        # logging.info("batches after local to global array shape %s, value %s", input_batch['input_ids'].shape, input_batch['input_ids'].addressable_shards)
         with jax.profiler.StepTraceAnnotation("train", step_num=self.step):
             run_with_xsc = self._xsc_check_policy and self._xsc_check_policy(self.step)
             compiled_train_step_fn = self._get_compiled_train_step_fn(
@@ -1088,7 +1088,7 @@ class SpmdTrainer(Module):
         return evaler_summaries
 
     def _pjit_train_step(self) -> jax.stages.Wrapped:
-        return debug_callback(pjit(
+        return pjit(
             self._train_step,
             in_shardings=(
                 self._trainer_state_partition_specs,
@@ -1103,7 +1103,7 @@ class SpmdTrainer(Module):
                 ),
             ),
             donate_argnums=(0,),  # donate the state
-        ))
+        )
 
     def compile_train_step(
         self,
@@ -1151,12 +1151,12 @@ class SpmdTrainer(Module):
         cfg = self.config
         # Shard and (possibly) dispatch the input batch.
         # jax.debug.print("")
-        jax.debug.print("before dispatch_global_batch {input_batch}", input_batch=input_batch)
+        # jax.debug.print("before dispatch_global_batch {input_batch}", input_batch=input_batch)
         if hasattr(self.input, "dispatch_global_batch"):
             input_batch = self.input.dispatch_global_batch(
                 input_batch, batch_axis_names=cfg.batch_axis_names
             )
-        jax.debug.print("after dispatch_global_batch {input_batch}", input_batch=input_batch)
+        # jax.debug.print("after dispatch_global_batch {input_batch}", input_batch=input_batch)
 
         new_prng_key, param_noise_key, forward_key, learner_key = jax.random.split(
             state.prng_key, 4

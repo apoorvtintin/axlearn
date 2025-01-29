@@ -246,7 +246,9 @@ class InputDispatcher(Module):
                         f"{dispatch.shape} vs. "
                         f"{(cfg.global_physical_batch_size, cfg.global_logical_batch_size)}"
                     )
-                    return jax.tree.map(lambda x: jnp.einsum("p...,pl->l...", x, dispatch), data)
+                    return jax.tree.map(lambda x: jnp.einsum("p...,pl->l...", x.astype(jnp.float32), dispatch.astype(jnp.float32)).astype(jnp.int32), data)
+                    
+                    # return jax.tree.map(lambda x: jnp.einsum("p...,pl->l...", x, dispatch), data)
                 for key, value in data.items():
                     data[key] = traverse_and_dispatch(value)
             return data
