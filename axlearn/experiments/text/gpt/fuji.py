@@ -559,7 +559,7 @@ def get_trainer_kwargs(
                 shared_lm_head=False,
                 flash_attention=flash_attention,
             ),
-            learner_kwargs=dict(peak_lr=1.5e-4, weight_decay=0.1),
+            learner_kwargs=dict(peak_lr=1.5e-5, weight_decay=6e-6),
             max_sequence_length=max_sequence_length,
             train_batch_size=int(len(jax.devices())/4),
             max_step=max_step,
