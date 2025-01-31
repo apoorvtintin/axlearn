@@ -147,6 +147,7 @@ from axlearn.common.utils import (
     shapes,
     split_prng_key,
     maybe_shard,
+    with_sharding_constraint,
 )
 
 
@@ -1877,6 +1878,7 @@ class MultiheadAttention(BaseLayer):
             query_positions=query_positions,
             return_aux=return_aux,
         )
+        output = with_sharding_constraint(output, PartitionSpec('fsdp', None, None))
         return output
 
     def _cap_logits(self, logits: Tensor) -> Tensor:
