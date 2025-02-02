@@ -577,7 +577,7 @@ class SpmdTrainer(Module):
 
                     self._step = self._step + 1
                     self.vlog(3, "Start step %s", self.step)
-                    # logging.info("batches before local to global array shape %s, value %s", input_batch['input_ids'].shape, input_batch)
+                    logging.info("batches before local to global array shape %s, value %s", input_batch['input_ids'].shape, input_batch)
                     output = self._run_step(
                         utils.host_to_global_device_array(input_batch),
                         force_run_evals=(
@@ -1033,7 +1033,7 @@ class SpmdTrainer(Module):
             A dict containing 'loss' and 'aux' outputs. If force_run_evals is a set,
             force run the evalers in the set and return 'evaler_summaries' output.
         """
-        # logging.info("batches after local to global array shape %s, value %s", input_batch['input_ids'].shape, input_batch['input_ids'].addressable_shards)
+        logging.info("batches after local to global array shape %s, value %s", input_batch['input_ids'].shape, input_batch['input_ids'].addressable_shards)
         with jax.profiler.StepTraceAnnotation("train", step_num=self.step):
             run_with_xsc = self._xsc_check_policy and self._xsc_check_policy(self.step)
             compiled_train_step_fn = self._get_compiled_train_step_fn(
@@ -1042,7 +1042,7 @@ class SpmdTrainer(Module):
             # Run the compiled function.
             self._trainer_state, outputs = compiled_train_step_fn(self.trainer_state, input_batch)
 
-        if self.step % 100 == 0 or 0 <= self.step <= 5:
+        if self.step % 1 == 0 or 0 <= self.step <= 5:
             self._step_log(
                 "loss=%s aux=%s",
                 outputs["loss"],

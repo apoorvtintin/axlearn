@@ -548,9 +548,9 @@ def get_trainer_kwargs(
     elif model_size == "70B":
         trainer_kwargs = dict(
             model_kwargs=dict(
-                num_layers=8,
-                hidden_dim=128 * 64,
-                num_heads=64,
+                num_layers=1,
+                hidden_dim=128 * 16,
+                num_heads=16,
                 # No GQA support in V1 models, so num_kv_heads is the same as num_heads.
                 num_kv_heads=None if version == Version.V1 else 8,
                 # TODO(kelvin-zou): Remove the perf numbers for V5e (OOM).
@@ -565,7 +565,7 @@ def get_trainer_kwargs(
             max_step=max_step,
             mesh_shape=mesh_shape_from_axes(fsdp=-1),
             eval_every_n_steps=1500,
-            save_every_n_steps=500,
+            # save_every_n_steps=10,
             mesh_rules=(
                 # TPU V5e maximum per device batch is 1.
                 # with all activation offloading, HBM usage: 14.6GB/chip.
