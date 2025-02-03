@@ -1,4 +1,6 @@
 from functools import partial
+import logging
+import os
 import jax
 import jax.numpy as jnp
 from jax import custom_vjp
@@ -13,6 +15,12 @@ def flash_attention(query, key, value, bias, causal, softmax_scale):
 
 
 def _mha_forward(query, key, value, bias, causal, softmax_scale):
+    if os.environ.get('SEQ_PACK_DEBUG') == "1":
+        logging.info("SEQ_PACK_DEBUG: Received bias: %s", bias is not None)
+        if bias is not None:
+            logging.info("SEQ_PACK_DEBUG: Bias tensor shape: %s", str(bias.shape))
+            logging.info("SEQ_PACK_DEBUG: Bias tensor type: %s", type(bias))
+
     # Get the batch size, sequence lengths, number of heads, and hidden dimension
     batch_size, q_seq_len, num_heads, d_model = query.shape
 

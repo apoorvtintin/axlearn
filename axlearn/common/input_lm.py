@@ -5,6 +5,7 @@
 
 import enum
 import functools
+import os
 from collections.abc import Sequence
 from enum import Enum
 from typing import Any, Literal, Optional
@@ -144,6 +145,20 @@ def text_to_lm_training_input(
             sp_vocab=vocab,
             replace_newlines_with=replace_newlines_with,
         )
+        # Log sequence lengths distribution if debug enabled
+        if os.environ.get('SEQ_PACK_DEBUG') == "1":
+            dbg_lengths = tf.cast(tokens.row_lengths(), tf.int32)
+            tf.debugging.Assert(tf.size(dbg_lengths) > 0, [dbg_lengths])
+            dbg_min_len = tf.reduce_min(dbg_lengths)
+            dbg_max_len = tf.reduce_max(dbg_lengths)
+            dbg_mean_len = tf.reduce_mean(tf.cast(dbg_lengths, tf.float32))
+            tf.print(
+                "SEQ_PACK_DEBUG: Sequence lengths:",
+                "min=", dbg_min_len,
+                "max=", dbg_max_len,
+                "mean=", dbg_mean_len,
+                "window_size=", window_size,
+            )
         # Append EOS to every sequence.
         eos_id = tf.constant(vocab.eos_id, dtype=tf.int32)
         # pylint: disable-next=unexpected-keyword-arg,no-value-for-parameter

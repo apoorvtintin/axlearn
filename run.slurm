@@ -115,6 +115,9 @@ export NEURON_RT_LOG_LEVEL_NRT=${NEURON_RT_LOG_LEVEL_NRT:-ERROR}
 # Set block attention flag (default: 0)
 export BLOCK_ATTENTION=${BLOCK_ATTENTION:-0}
 
+# Set sequence packing debug flag (default: 0)
+export SEQ_PACK_DEBUG=${SEQ_PACK_DEBUG:-0}
+
 srun --label \
     ${SCRATCH_BASE}/${RUNFILE} \
     --rw --root \
@@ -125,6 +128,7 @@ srun --label \
     -m /fsx/thangakr/override_dnm2/c4_trainer.py:/axltest/axltest/c4_trainer.py \
     -m /fsx/thangakr/override_dnm2/utils.py:/axlearn/axlearn/common/flash_attention/utils.py \
     -m /fsx/thangakr/override_dnm2/neuron_attention.py:/axlearn/axlearn/common/flash_attention/neuron_attention.py \
+    -m /fsx/thangakr/override_dnm2/input_lm.py:/axlearn/axlearn/common/input_lm.py \
     -m /fsx:/fsx \
     -e NEURON_RT_EXEC_TIMEOUT=180 \
     -e NEURON_RT_ENABLE_INTERNODE_EXECUTION_BARRIER=1 \
@@ -147,7 +151,8 @@ srun --label \
     -e JAX_COMPILATION_CACHE_DIR \
     -e MAX_TRAIN_STEPS \
     -e NEURON_RT_LOG_LEVEL_NRT \
-    -e N_LAYERS
+    -e N_LAYERS \
+    -e SEQ_PACK_DEBUG
 
 # Save reference checkpoint if SAVE_REFERENCE_CKPT is set
 if [ "$SAVE_REFERENCE_CKPT" = "1" ]; then

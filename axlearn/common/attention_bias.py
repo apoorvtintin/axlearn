@@ -18,6 +18,8 @@ fully backwards-compatible manner.
 
 import dataclasses
 import functools
+import logging
+import os
 import typing
 from typing import (
     Callable,
@@ -770,7 +772,15 @@ def _make_bool_segment_mask(*, source_segments: Tensor, target_segments: Tensor)
     # Original implementation
     target_segments = jnp.expand_dims(target_segments, -1)
     source_segments = jnp.expand_dims(source_segments, -2)
-    return jax.lax.eq(source_segments, target_segments)[:, None, ...]
+    mask = jax.lax.eq(source_segments, target_segments)[:, None, ...]
+    
+    # Log segment mask stats if debug enabled
+    if os.environ.get('SEQ_PACK_DEBUG') == "1":
+        logging.info(
+            "SEQ_PACK_DEBUG: Segment mask shape: %s",
+            str(mask.shape),
+        )
+    return mask
 
 
 def make_segment_mask(*, source_segments: Tensor, target_segments: Tensor) -> Tensor:
