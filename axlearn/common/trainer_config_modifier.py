@@ -146,6 +146,113 @@ class MeshShapeModifier(ConfigModifier):
         return cfg
 
 
+class ModuleConfigModifier(ConfigModifier):
+    """Update the model config for the trainer config."""
+
+    @config_class
+    class Config(ConfigModifier.Config):
+        """Configure ModuleConfigModifier.
+
+        Attributes:
+            target_config: Target module path
+                (e.g. `model.decoder.transformer.layer`) to be modified.
+            modification: The new config to replace the target module's config.
+        """
+
+        target_config: Required[str] = REQUIRED
+        modification: Required[Configurable.Config] = REQUIRED
+
+    def __init__(self, cfg: Config):
+        super().__init__(cfg)
+        self._target_config = self.config.target_config
+        self._modification = self.config.modification
+
+    def _merge_configs(
+        self, target_cfg: Configurable.Config, found_module: Configurable.Config
+    ) -> Configurable.Config:
+        """Merge configurations from the config being replaced on a best effort basis.
+
+        Merge Rules:
+            - Klass is not changed, use target cfg.
+            - If field exists in both then use from class being replaced.
+            - Otherwise keep the value from target_cfg.
+
+        Args:
+            target_cfg: Configuration that will replace found_module.
+            found_module: Existing configuration whose class will be replaced
+                but it's confguration will be merged with target_cfg.
+
+        Returns:
+            The modified config.
+
+        """
+        for key in target_cfg.keys():
+            if key == "klass":
+                continue
+            elif hasattr(found_module, key) and hasattr(target_cfg, key):
+                setattr(target_cfg, key, getattr(found_module, key))
+        return target_cfg
+
+    def __call__(self, cfg: SpmdTrainer.Config) -> SpmdTrainer.Config:
+        """Overwrite the model config of the specified modules.
+
+        Args:
+            cfg: The trainer config to be modified.
+
+        Raises:
+            ValueError: The target module is not found.
+
+        Returns:
+            The modified trainer config.
+        """
+
+        found_module = cfg.get_recursively(self._target_config.split("."))
+        self._modification = self._merge_configs(self._modification, found_module)
+        cfg.set_recursively(self._target_config.split("."), value=self._modification)
+        return cfg
+
+
+class PartitionSpecModifier(ConfigModifier):
+    """Update the partition spec attribute for the specified modules."""
+
+    @config_class
+    class Config(ConfigModifier.Config):
+        """Configure PartitionSpecModifier.
+
+        Attributes:
+            partition_specs: A nested mapping from module path
+                (e.g. `model.decoder.transformer.layer`) to another
+                mapping of model attribute to PartitionSpec.
+        """
+
+        partition_specs: Required[Dict[str, PartitionSpec]] = REQUIRED
+
+    def __init__(self, cfg: Config):
+        super().__init__(cfg)
+        self._attribute_dicts = self.config.partition_specs
+
+    def __call__(self, cfg: SpmdTrainer.Config) -> SpmdTrainer.Config:
+        """Update the partition_spec attributes for the specified modules.
+
+        Args:
+            cfg: The trainer config to be modified.
+
+        Raises:
+            ValueError: The target module is not found.
+            ValueError: The partition_spec attribute is not found.
+
+        Returns:
+            The modified trainer config.
+        """
+        for module_name, partition_spec_dict in self._attribute_dicts.items():
+            for partition_spec_name, partition_spec in partition_spec_dict.items():
+                cfg.set_recursively(
+                    module_name.split(".") + [partition_spec_name], value=partition_spec
+                )
+
+        return cfg
+
+
 class ChainConfigModifier(ConfigModifier):
     """Chain multiple config modifiers together."""
 

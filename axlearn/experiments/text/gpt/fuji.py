@@ -38,6 +38,8 @@ from axlearn.common.trainer_config_modifier import (
     ChainConfigModifier,
     GradientAccumulationModifier,
     MeshShapeModifier,
+    ModuleConfigModifier,
+    PartitionSpecModifier,
     RematSpecModifier,
 )
 from axlearn.common.utils import (
@@ -150,6 +152,69 @@ def get_trainer_kwargs(
         num_kv_heads = 8
 
     rope_theta = ROPE_THETA[version]
+
+    # TRN2 specific model config modifications
+    trn2_model_modifications = [
+        # Neuron compiler has a module to detect repeating blocks and reuse them during compilation.
+        # So compile time does not grow with the number of layers.
+        ModuleConfigModifier.default_config().set(
+            target_config="model.decoder.transformer",
+            modification=StackedTransformerLayer.default_config(),
+        )
+    ]
+    # Grouped QKV is only used in fuji-v3 except in fuji-v2 if model is 70B
+    if version == Version.V3 or (model_size == "70B" and version != Version.V1):
+        trn2_model_modifications.append(
+            ModuleConfigModifier.default_config().set(
+                target_config="model.decoder.transformer.layer.self_attention.attention."
+                "input_linear.input_linear",
+                modification=GroupedQKVLinear.default_config(),
+            )
+        )
+
+    trn2_partition_spec_modifications = [
+        PartitionSpecModifier.default_config().set(
+            partition_specs={
+                # Vocab parallel embeddings sharding from Megatron LM.
+                "model.decoder.emb.token_emb": {
+                    "param_partition_spec": (
+                        "model",
+                        ("expert", "fsdp", "seq"),
+                    ),
+                    "input_partition_spec": ("fsdp", None),
+                    "output_partition_spec": ("fsdp", "model"),
+                    "embedding_partition_spec": ("model", "fsdp"),
+                },
+                # Sequence parallel shardings for norms.
+                "model.decoder.transformer.layer.self_attention.norm": {
+                    "input_partition_spec": ("fsdp", "model", None),
+                    "output_partition_spec": ("fsdp", None, None),
+                },
+                "model.decoder.transformer.layer.feed_forward.norm": {
+                    "input_partition_spec": ("fsdp", "model", None),
+                    "output_partition_spec": ("fsdp", None, None),
+                },
+                "model.decoder.output_norm": {
+                    "input_partition_spec": ("fsdp", "model", None),
+                    "output_partition_spec": ("fsdp", None, None),
+                },
+            },
+        ),
+    ]
+
+    trn2_lm_head_partition_spec = [
+        PartitionSpecModifier.default_config().set(
+            partition_specs={
+                # Vocab parallel embeddings sharding from Megatron LM.
+                "model.decoder.lm_head": {
+                    "param_partition_spec": (
+                        "model",
+                        ("expert", "fsdp", "seq"),
+                    ),
+                },
+            },
+        ),
+    ]
 
     offload_dots_saveable_policy = config_for_function(
         extended_checkpoint_policies.offload_dots_saveable
@@ -416,6 +481,20 @@ def get_trainer_kwargs(
                     "gpu-(p5.48xlarge|p4de.24xlarge|a3-highgpu-8g|a3-megagpu-8g)-(256|512|1024)",
                     mesh_shape_from_axes(data=-1, fsdp=8),
                 ),
+                (
+                    "neuron-(trn2|trn2n).48xlarge-64",
+                    ChainConfigModifier.default_config().set(
+                        config_modifiers=[
+                            MeshShapeModifier.default_config().set(
+                                # TP within the chip, FSDP across chips.
+                                # Each TRN2 chip has 4 XLA cores.
+                                mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
+                            ),
+                            *trn2_model_modifications,
+                            *(trn2_partition_spec_modifications + trn2_lm_head_partition_spec),
+                        ],
+                    ),
+                ),
             ),
         )
     elif model_size == "70B":
@@ -534,6 +613,8 @@ def get_trainer_kwargs(
                                     ),
                                 }
                             ),
+                            *trn2_model_modifications,
+                            *(trn2_partition_spec_modifications + trn2_lm_head_partition_spec),
                         ],
                     ),
                 ),

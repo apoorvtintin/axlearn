@@ -394,6 +394,58 @@ class ConfigBase:
             setattr(self, k, v)
         return self
 
+    def get_recursively(self, path: Sequence[str]) -> Any:
+        """Recursively find the target key in the config and return its value.
+
+        Args:
+            path: A sequence of keys for indexing to get the target value.
+
+        Raises:
+            ValueError: A key in path is not found or path is empty.
+            AttributeError: If key in path is not found.
+
+        Returns:
+            value at the path or self if path is empty.
+        """
+        current = self
+        index = 0
+
+        while path and index < len(path):
+            key = path[index]
+
+            # TODO(markblee): maybe use cfg.visit instead of getattr
+            current = getattr(current, key)
+            index += 1
+
+            if index == len(path):
+                return current
+
+        return current
+
+    def set_recursively(self, path: Sequence[str], *, value: Any):
+        """Recursively find the target key in the config and set its value.
+
+        Args:
+            path: A sequence of keys for indexing to set the target value.
+            new_value: New value to replace the target value.
+
+        Raises:
+            ValueError: A key in path is not found or path is empty.
+            AttributeError: If key in path is not found.
+        """
+
+        if not path:
+            raise ValueError("Path is empty.")
+
+        current = self
+        for i, key in enumerate(path):
+            if i == len(path) - 1:
+                setattr(current, key, value)
+                return
+            else:
+                # TODO(markblee): maybe use cfg.visit instead of getattr
+                current = getattr(current, key)
+
     def clone(self, **kwargs):
         """Returns a clone of the original config with the optional keyword overrides.
 
