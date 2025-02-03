@@ -118,6 +118,9 @@ export BLOCK_ATTENTION=${BLOCK_ATTENTION:-0}
 # Set sequence packing debug flag (default: 0)
 export SEQ_PACK_DEBUG=${SEQ_PACK_DEBUG:-0}
 
+# Set model config (default: fuji-70B-v2-flash)
+export MODEL_CONFIG=${MODEL_CONFIG:-fuji-70B-v2-flash}
+
 srun --label \
     ${SCRATCH_BASE}/${RUNFILE} \
     --rw --root \
@@ -126,6 +129,7 @@ srun --label \
     -m /fsx/thangakr/override_dnm2/input_tf_data.py:/axlearn/axlearn/common/input_tf_data.py \
     -m /fsx/thangakr/override_dnm2/fuji.py:/axltest/axltest/kaena.py \
     -m /fsx/thangakr/override_dnm2/c4_trainer.py:/axltest/axltest/c4_trainer.py \
+    -m /fsx/thangakr/override_dnm2/run.sh:/axltest/axltest/run.sh \
     -m /fsx/thangakr/override_dnm2/utils.py:/axlearn/axlearn/common/flash_attention/utils.py \
     -m /fsx/thangakr/override_dnm2/neuron_attention.py:/axlearn/axlearn/common/flash_attention/neuron_attention.py \
     -m /fsx/thangakr/override_dnm2/input_lm.py:/axlearn/axlearn/common/input_lm.py \
@@ -152,7 +156,9 @@ srun --label \
     -e MAX_TRAIN_STEPS \
     -e NEURON_RT_LOG_LEVEL_NRT \
     -e N_LAYERS \
-    -e SEQ_PACK_DEBUG
+    -e SEQ_PACK_DEBUG \
+    -e MODEL_CONFIG
+
 
 # Save reference checkpoint if SAVE_REFERENCE_CKPT is set
 if [ "$SAVE_REFERENCE_CKPT" = "1" ]; then
