@@ -756,9 +756,18 @@ def bool_to_bias(mask: OpT) -> OpT:
 
 
 def _make_bool_segment_mask(*, source_segments: Tensor, target_segments: Tensor) -> Tensor:
-    """The same as `make_segment_mask()` but returns a bool mask tensor instead of a flaot
-    bias tensor, where True corresponds to a bias of 0 and False corresponds to a bias of NEG_INF>
+    """The same as `make_segment_mask()` but returns a bool mask tensor instead of a float
+    bias tensor, where True corresponds to a bias of 0 and False corresponds to a bias of NEG_INF.
+
+    If BLOCK_ATTENTION environment variable is set, returns all False values to test if masking 
+    is working by preventing any attention between tokens.
     """
+    import os
+    if os.environ.get('BLOCK_ATTENTION') == "1":
+        shape = source_segments.shape[:-1] + target_segments.shape[-1:]
+        return jnp.zeros(shape, dtype=bool)[:, None, ...]
+
+    # Original implementation
     target_segments = jnp.expand_dims(target_segments, -1)
     source_segments = jnp.expand_dims(source_segments, -2)
     return jax.lax.eq(source_segments, target_segments)[:, None, ...]
