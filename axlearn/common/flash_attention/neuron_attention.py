@@ -31,7 +31,8 @@ def _mha_forward(query, key, value, bias, causal, softmax_scale):
     else:
         grid = batch_size, num_heads
     
-    if bias != None:
+    if bias is not None:
+        assert isinstance(bias, (jax.Array, jnp.ndarray)), "Bias must be a JAX array"
         assert bias.ndim == 4, f"Neuron flash_attention is only expecting bias.ndim = 4 but got {bias.ndim}"
         attn_output, lse = flash_fwd[grid](
             q,

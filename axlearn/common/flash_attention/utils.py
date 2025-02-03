@@ -284,19 +284,11 @@ def flash_attention_implementation(
             key = _repeat_kv_heads(query.shape[2], key)
             value = _repeat_kv_heads(query.shape[2], value)
 
-            causal, segment_ids, explicit_bias = split(
-                bias, CausalAttentionBias, SegmentIdAttentionBias
-            )
+            # bias_tensor for sequence packing
+            bias_tensor = bias.value() if bias is not None else None
 
-            # mask, segment_ids, explicit_bias = split(
-            #     bias, MaskFnAttentionBias, SegmentIdAttentionBias
-            # )
-            # shard_map-decorated function needs to be jitted.
-            if not isinstance(segment_ids, ZeroAttentionBias):
-                logging.info("segment_ids value is %s", segment_ids)
-                raise Exception("Sequence Packing is not supported on Neuron backend")
             return neuron_flash_attention(
-                query, key, value, bias=explicit_bias.value(), causal=causal.has_value(), softmax_scale=softmax_scale)
+                query, key, value, bias_tensor, causal=True, softmax_scale=softmax_scale)
 
         elif backend in ("cpu", "xla"):
             key = _repeat_kv_heads(query.shape[2], key)

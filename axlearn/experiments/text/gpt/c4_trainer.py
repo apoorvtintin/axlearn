@@ -84,14 +84,17 @@ def _eval_input_sources(
     }
 
 
-def _train_input_source(*, vocab_size: int, max_sequence_length: int) -> InstantiableConfig:
+def _train_input_source(*, vocab_size: int, max_sequence_length: int, packing_method=None) -> InstantiableConfig:
     source_cfg = config_for_function(mixture_train_input_source).set(
         data_mixture_components=_train_data_mixture_components,
         vocab_cfg=config_for_function(vocab).set(
             sentencepiece_model_name=_SENTENCEPIECE_MODEL_NAME[vocab_size]
         ),
         max_sequence_length=max_sequence_length,
-        preprocessor=config_for_function(lm_text_preprocessor).set(max_padding_fraction=0.5),
+        preprocessor=config_for_function(lm_text_preprocessor).set(
+            max_padding_fraction=0.5,
+            packing_method=packing_method,
+        ),
     )
     if get_data_dir() == "FAKE":
         source_cfg.preprocessor.shuffle_buffer_size = 0

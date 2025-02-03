@@ -779,6 +779,7 @@ def trainer_configs(
             train_input_source=train_input_source(
                 vocab_size=vocab_size,
                 max_sequence_length=max_sequence_length,
+                packing_method=input_lm.PackingMethodType.EOS_DELIM_MASK,
             ),
             evalers=evaler_config_dict(
                 eval_input_sources(vocab_size=vocab_size, max_sequence_length=max_sequence_length),
