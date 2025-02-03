@@ -211,21 +211,21 @@ class InputDispatcher(Module):
                     constant_values=False,
                 )
         
-        # import logging
-        # # logging.info("feed_logical_batch_size, %s self.num_logical_feeds, %s, feed_physical_batch_size %s",feed_logical_batch_size,  self.num_logical_feeds, feed_physical_batch_size)
-        # def reshape(batch):
-        #     # logging.info("physical_feed_batch shape %s",batch.shape)
-        #     batch =batch.reshape((feed_logical_batch_size, int(feed_physical_batch_size // feed_logical_batch_size), -1))
-        #     # logging.info("here1, shape %s", batch.shape)
-        #     batch=batch.transpose((1,0,2))
-        #     # logging.info("here2 %s", batch.shape)
-        #     batch=batch.reshape((feed_physical_batch_size, -1))   
-        #     # logging.info("here3 %s", batch.shape)
-        #     if batch.shape[-1] == 1:
-        #         batch = np.squeeze(batch, axis=-1)
-        #     return batch
-        # physical_feed_batch = jax.tree.map(reshape, physical_feed_batch)
-        # dispatch = jax.tree.map(reshape, dispatch)
+        import logging
+        # logging.info("feed_logical_batch_size, %s self.num_logical_feeds, %s, feed_physical_batch_size %s",feed_logical_batch_size,  self.num_logical_feeds, feed_physical_batch_size)
+        def reshape(batch):
+            # logging.info("physical_feed_batch shape %s value %s",batch.shape, batch)
+            batch =batch.reshape(int(feed_physical_batch_size // feed_logical_batch_size), feed_logical_batch_size, -1)
+            # logging.info("here1 %s, value %s", batch.shape, batch)
+            batch=batch.transpose((1,0,2))
+            # logging.info("here2 %s, value %s", batch.shape, batch)
+            batch=batch.reshape((feed_physical_batch_size, -1))   
+            # logging.info("here3 %s, value %s", batch.shape, batch)
+            if batch.shape[-1] == 1:
+                batch = np.squeeze(batch, axis=-1)
+            return batch
+        physical_feed_batch = jax.tree.map(reshape, physical_feed_batch)
+        dispatch = jax.tree.map(reshape, dispatch)
         
 
         assert dispatch.shape == (
