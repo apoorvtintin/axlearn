@@ -45,7 +45,7 @@ from axlearn.common.config import InstantiableConfig, config_for_function
 from axlearn.common.input_lm import lm_text_preprocessor
 from axlearn.common.utils import get_data_dir
 from axlearn.experiments.text.common import DataMixtureComponent, vocab
-from axlearn.experiments.text.gpt import fuji, gspmd
+from axltest import kaena as fuji
 from axlearn.experiments.text.gpt.common import mixture_train_input_source, tfds_input
 from axlearn.experiments.trainer_config_utils import TrainerConfigFn
 
@@ -105,5 +105,4 @@ def named_trainer_configs() -> dict[str, TrainerConfigFn]:
     """Returns a mapping from trainer config names to TrainerConfigFn's."""
     config_map = {}
     config_map.update(fuji.trainer_configs(_train_input_source, _eval_input_sources))
-    config_map.update(gspmd.trainer_configs(_train_input_source, _eval_input_sources))
     return config_map

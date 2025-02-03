@@ -9,6 +9,7 @@ The fuji models are set up to imitate LLaMA models:
 * LLaMA 2: https://arxiv.org/abs/2307.09288
 * LLaMA 3: https://github.com/meta-llama/llama3
 """
+import os
 import jax
 import enum
 import functools
@@ -17,7 +18,7 @@ from typing import Any, Optional, Union
 
 from jax.ad_checkpoint import checkpoint_policies as jax_remat_policies
 
-from axlearn.common import causal_lm, config
+from axlearn.common import causal_lm, config, input_lm
 from axlearn.common.attention import (
     BaseStackedTransformerLayer,
     FusedGroupedQKVLinear,
@@ -63,6 +64,11 @@ from axlearn.experiments.text.gpt.common import (
 from axlearn.experiments.text.gpt.common import model_config as common_model_config
 from axlearn.experiments.text.gpt.common import scaled_hidden_dim
 from axlearn.experiments.trainer_config_utils import TrainerConfigFn
+
+jax._src.interpreters.mlir._platforms_with_donation.append('neuron')
+ 
+import tensorflow as tf
+tf.random.set_seed(1234)
 
 MODEL_SIZES = ("test", "1B", "3B", "7B", "8B", "70B")
 
@@ -132,13 +138,18 @@ def get_trainer_kwargs(
     version: Version,
     flash_attention: bool = False,
 ) -> dict[str, Any]:
-    """Construct default trainer kwargs given a model size."""
-    tokens_per_batch = TOKENS_PER_BATCH[version]
+    TRN_MODEL_AXIS_SIZE=4
+    dp_degree = int(jax.device_count()/TRN_MODEL_AXIS_SIZE)
+    max_sequence_length = MAX_SEQUENCE_LENGTH[version]
+    tokens_per_batch = max_sequence_length * dp_degree
+    train_batch_size = tokens_per_batch // max_sequence_length
+ 
+    # max_step that is too large results in numerical errors.
+    # Keep it small by assuming we are working with 4M batch size even when we are testing on smaller batch size.
+    four_million = 4 * (1024**2)
     if model_size not in TOTAL_TOKENS[version]:
         return {}
-    max_step = TOTAL_TOKENS[version][model_size] // tokens_per_batch
-    max_sequence_length = MAX_SEQUENCE_LENGTH[version]
-    train_batch_size = tokens_per_batch // max_sequence_length
+    max_step = TOTAL_TOKENS[version][model_size] // four_million
 
     # Whether to use grouped query attention.
     num_kv_heads = None
@@ -540,7 +551,7 @@ def get_trainer_kwargs(
     elif model_size == "70B":
         trainer_kwargs = dict(
             model_kwargs=dict(
-                num_layers=80,
+                num_layers=int(os.environ.get('N_LAYERS', 4)),
                 hidden_dim=128 * 64,
                 num_heads=64,
                 # No GQA support in V1 models, so num_kv_heads is the same as num_heads.
@@ -551,7 +562,10 @@ def get_trainer_kwargs(
                 shared_lm_head=False,
                 flash_attention=flash_attention,
             ),
-            learner_kwargs=dict(peak_lr=1.5e-4, weight_decay=0.1),
+            learner_kwargs=dict(
+                peak_lr=float(os.environ.get('PEAK_LR', '1.5e-5')),
+                weight_decay=float(os.environ.get('WEIGHT_DECAY', '6e-6'))
+            ),
             max_sequence_length=max_sequence_length,
             train_batch_size=int(len(jax.devices())/4),
             max_step=max_step,
