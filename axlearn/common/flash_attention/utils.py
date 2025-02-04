@@ -290,17 +290,15 @@ def flash_attention_implementation(
             key = _repeat_kv_heads(query.shape[2], key)
             value = _repeat_kv_heads(query.shape[2], value)
 
-            causal, segment_ids, explicit_bias = split(
-                bias, CausalAttentionBias, SegmentIdAttentionBias
+            causal, other_biases = split(
+                bias, CausalAttentionBias
             )
 
-            if not isinstance(segment_ids, ZeroAttentionBias):
-                raise ValueError("Sequence Packing is not supported on Neuron backend")
             return neuron_flash_attention(
                 query,
                 key,
                 value,
-                bias=explicit_bias.value(),
+                bias=other_biases.value(),
                 causal=causal.has_value(),
                 softmax_scale=softmax_scale,
                 dropout_rate=dropout_rate,
