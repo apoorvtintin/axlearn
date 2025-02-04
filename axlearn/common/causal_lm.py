@@ -89,10 +89,13 @@ class CrossEntropyLossMetrics(BaseLossMetrics):
         validate_contains_paths(predict_outputs, paths=["logits"])
 
         cfg: CrossEntropyLossMetrics.Config = self.config
-
         target_labels: Tensor = input_batch["target_labels"]
         target_num_bytes: Optional[Tensor] = input_batch.get("target_num_bytes")
         logits = predict_outputs["logits"]
+        logits_dtype = logits.dtype
+        if logits_dtype in (jnp.bfloat16, jnp.float16):
+            # Avoid computing softmax in 16-bit floats.
+            logits = logits.astype(jnp.float32)
 
         live_targets = target_labels >= 0
         num_targets = live_targets.sum()
@@ -342,18 +345,23 @@ class Model(BaseModel):
                 metrics: a nested Tensor. See corresponding `metrics` implementation for details.
         """
         predictions = self.predict(input_batch)
-        aux_outputs = {**predictions}
+        # aux_outputs = {**predictions}
+        aux_outputs = {}
         loss = None
         target_labels: Tensor = input_batch.get("target_labels")
         if target_labels is not None:
             loss, metrics = self._metrics(input_batch=input_batch, predict_outputs=predictions)
-            aux_outputs.update(loss=loss, metrics=metrics)
+            aux_outputs.update(loss=loss, metrics=metrics, predictions=input_batch)
+            # aux_outputs.update(loss=loss, metrics=metrics)
+            # aux_outputs.update(predictions=predictions["emb_out"])
+            # aux_outputs.update(loss=loss, metrics=metrics)
         # If return_aux, return the logits and output pre LM head (useful for downstream tasks),
         # as well as training metrics like the per-token-loss.
         #
         # N.B. Do not enable for large-scale training since auxiliary outputs are not partitioned.
         # TODO(rpang): support partitioning of auxiliary outputs.
-        return loss, aux_outputs if return_aux else {}
+        # return loss, aux_outputs if return_aux else {}
+        return loss, aux_outputs
 
     def beam_search_decode(
         self,

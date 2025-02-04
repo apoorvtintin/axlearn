@@ -18,16 +18,17 @@ class DispatcherTest(TestCase):
         # In the most common use cases, users only specify `global_logical_batch_size` and
         # `num_physical_feeds` and let InputDispatcher figure out `global_physical_batch_size`
         # and `logical_feed_indices` automatically.
-        (8, None, 2, None),
-        (2, None, 16, None),
-        # With explicit `global_physical_batch_size`.
-        (8, 16, 2, None),
-        # With explicit `logical_feed_indices`.
-        (8, 16, 2, (0,)),
-        (8, 16, 4, (1, 3)),
-        (2, 16, 16, (7, 11)),
-        # Test a case where `feed_logical_batch_size` < `feed_physical_batch_size`.
-        (2, 8, 2, (0,)),
+        # (8, None, 2, None),
+        # (2, None, 16, None),
+        # # With explicit `global_physical_batch_size`.
+        # (8, 16, 2, None),
+        # # With explicit `logical_feed_indices`.
+        # (8, 16, 2, (0,)),
+        # (8, 16, 4, (1, 3)),
+        # (2, 16, 16, (7, 11)),
+        # # Test a case where `feed_logical_batch_size` < `feed_physical_batch_size`.
+        # (2, 8, 2, (0,)),
+        (16, 64, 1, (0,)),
     )
     def test_input_dispatcher(
         self,

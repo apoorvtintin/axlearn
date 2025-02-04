@@ -247,6 +247,10 @@ def _stable_cross_entropy(logits: Tensor, targets: Tensor, z_loss_scale: float) 
 
     TODO(@bwzhang): Factorize the following as a log_softmax_with_z_loss function.
     """
+    logits_dtype = logits.dtype
+    if logits_dtype in (jnp.bfloat16, jnp.float16):
+        # Avoid computing softmax in 16-bit floats.
+        logits = logits.astype(jnp.float32)
     logits_sum = jax.scipy.special.logsumexp(logits, axis=-1, keepdims=True)
     log_softmax = logits - logits_sum
     cross_entropy_loss = -jnp.sum(targets * log_softmax, axis=-1)
@@ -263,6 +267,10 @@ def _stable_cross_entropy_fwd(logits: Tensor, targets: Tensor, z_loss_scale: flo
     This is a copy of x-entropy loss from the T5X codebase.
     Ref: https://github.com/google-research/t5x/blob/90d74/t5x/losses.py#L60
     """
+    logits_dtype = logits.dtype
+    if logits_dtype in (jnp.bfloat16, jnp.float16):
+        # Avoid computing softmax in 16-bit floats.
+        logits = logits.astype(jnp.float32)
     max_logit = logits.max(axis=-1, keepdims=True)
     shifted = logits - max_logit
     exp_shifted = jnp.exp(shifted)
@@ -295,6 +303,10 @@ def _stable_cross_entropy_bwd(
     """
     g = g[0]  # Ignore cross_entropy_loss and z_loss component as that is only used for logging.
     logits, targets, z_loss_scale, exp_shifted, sum_exp, log_softmax, log_z = res
+    logits_dtype = logits.dtype
+    if logits_dtype in (jnp.bfloat16, jnp.float16):
+        # Avoid computing softmax in 16-bit floats.
+        logits = logits.astype(jnp.float32)
     # z-loss term adds the (2 * z_loss_scale * log_z) factor.
     deriv = (
         jnp.expand_dims(jnp.sum(targets, axis=-1) + 2 * z_loss_scale * log_z, -1)

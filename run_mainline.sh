@@ -9,6 +9,7 @@ MASTER_PORT=41000
 JAX_COORDINATOR_PORT=41001
 export NEURON_RT_ROOT_COMM_ID="${MASTER_ADDR}:${MASTER_PORT}"
 export NEURON_PJRT_PROCESSES_NUM_DEVICES=$(printf '%s,' $(seq 1 $num_nodes | xargs -I {} echo $devices_per_node) | sed 's/,$//')
+# export NEURON_PJRT_PROCESSES_NUM_DEVICES=8
 export NEURON_PJRT_PROCESS_INDEX=$SLURM_NODEID
 export LD_LIBRARY_PATH="/opt/amazon/efa/lib/"
 export FI_LOG_LEVEL="warn"
@@ -79,6 +80,7 @@ export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} --internal-num-neuroncores-per-sengin
 export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} --model-type transformer"
 export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} --no-internal-hlo-remat"
 export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} --enable-mixed-precision-accumulation"
+# export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} --auto-cast=none"
 export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} -O1"
 export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} --tensorizer-options='--enable-hoist-fsdp-collectives'"
 export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} --internal-hlo2tensorizer-options='--remat-rope'"
@@ -87,7 +89,7 @@ export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} --dump=${NEURON_DUMP_PATH}"
 # export JAX_COMPILATION_CACHE_DIR="/fsx/apoorvgu/upstream_final/cc_cache/"
 # mkdir -p ${JAX_COMPILATION_CACHE_DIR}
 
-# export NEURON_FSDP=1
+export NEURON_FSDP=1
 export DATA_SEED=1
 export LNC=2
 # export NEURON_ALL_REDUCE_UPCASTER=1
@@ -137,6 +139,8 @@ if [ "$#" -ne 1 ]; then
     exit 1
 fi
 
+# pytest --log-cli-level=DEBUG --capture=tee-sys -v -s  /fsx/apoorvgu/upstream_final/axlearn/axlearn/common/input_dispatch_test.py
+
 # Extract the value after "cpu="
 CPU_VALUE=${1#*=}
 
@@ -154,10 +158,16 @@ if [ "$CPU_VALUE" = "1" ]; then
 
 elif [ "$CPU_VALUE" = "0" ]; then
     echo "Running Neuron"
-    OUTPUT_DIR="/fsx/apoorvgu/upstream_final/final_artifacts/axlearn_trn"
-    export XLA_FLAGS="--xla_dump_hlo_as_text --xla_disable_hlo_passes=aws_neuron_flip_all_gather_dot,neuron-hierarchical-collectives,neuron_all_gather_duplicate_remover,neuron-token-threading,aws_neuron_dynamic_slice_reshape_canonicalizer --xla_dump_to=${HLO_DUMP_PATH} --xla_dump_hlo_pass_re='.*'"
+    # OUTPUT_DIR="/fsx/apoorvgu/upstream_final/final_artifacts/axlearn_trn"
+    OUTPUT_DIR="${TEST_ARTIFACTS_PATH}/axlearn_out"
+    mkdir -p ${OUTPUT_DIR}
+
+    # export XLA_FLAGS="--xla_dump_hlo_as_text --xla_disable_hlo_passes=aws_neuron_flip_all_gather_dot,neuron-hierarchical-collectives,neuron_all_gather_duplicate_remover,neuron-token-threading,aws_neuron_dynamic_slice_reshape_canonicalizer,reduce-scatter-creator --xla_dump_to=${HLO_DUMP_PATH} --xla_dump_hlo_pass_re='.*'"
+    # export XLA_FLAGS="--xla_dump_hlo_as_text --xla_disable_hlo_passes=aws_neuron_flip_all_gather_dot,neuron-hierarchical-collectives,neuron_all_gather_duplicate_remover,neuron-token-threading,aws_neuron_dynamic_slice_reshape_canonicalizer --xla_dump_to=${HLO_DUMP_PATH} --xla_dump_hlo_pass_re='.*'"
+    # export XLA_FLAGS="--xla_dump_hlo_snapshots --xla_dump_hlo_as_text --xla_disable_hlo_passes=aws_neuron_flip_all_gather_dot,neuron-hierarchical-collectives,neuron_all_gather_duplicate_remover,neuron-token-threading,aws_neuron_dynamic_slice_reshape_canonicalizer --xla_dump_to=${HLO_DUMP_PATH} --xla_dump_hlo_pass_re='.*'"
+    export XLA_FLAGS=" --xla_dump_hlo_as_text --xla_disable_hlo_passes=aws_neuron_flip_all_gather_dot,neuron-hierarchical-collectives --xla_dump_to=${HLO_DUMP_PATH} --xla_dump_hlo_pass_re='.*'"
     python -m axlearn.common.launch_trainer_main \
-        --module=text.gpt.c4_trainer --config=fuji-70B-v2 \
+        --module=text.gpt.c4_trainer --config=fuji-70B-v2-flash \
         --trainer_dir=$OUTPUT_DIR --data_dir=$DATA_DIR \
         --jax_backend=neuron --mesh_selector=neuron-trn2.48xlarge-64 \
         --distributed_coordinator=$MASTER_ADDR:$JAX_COORDINATOR_PORT --num_processes=$num_nodes \

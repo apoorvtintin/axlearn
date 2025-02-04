@@ -504,6 +504,7 @@ class Decoder(BaseLayer):
         emb_batch = {**input_batch}
         emb_batch["inputs"] = emb_batch["input_ids"]
         x = self.emb(input_batch=emb_batch)
+        emb_out = x
 
         if mode == ForwardMode.FORWARD:
             transformer_state, x = (
@@ -556,7 +557,7 @@ class Decoder(BaseLayer):
                 logits = self.emb.attend(x)
         logits = with_sharding_constraint(logits, PartitionSpec(*self.config.logits_partition_spec))
         # TODO(markblee): Rename to just "transformer". "transformer_state" is a bit redundant.
-        return dict(transformer_state=transformer_state), dict(logits=logits, hidden_states=x)
+        return dict(transformer_state=transformer_state), dict(logits=logits, emb_out=emb_out, hidden_states=x)
 
     def forward(
         self,
