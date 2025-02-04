@@ -239,7 +239,7 @@ def get_trainer_kwargs(
     if model_size == "test":
         trainer_kwargs = dict(
             model_kwargs=dict(
-                num_layers=4,
+                num_layers=int(os.environ.get('N_LAYERS', 4)),
                 hidden_dim=8,
                 ffn_dim=scaled_hidden_dim(scale=8 / 3, round_up_to_multiples_of=16),
                 num_heads=4,
@@ -249,7 +249,10 @@ def get_trainer_kwargs(
                 shared_lm_head=True,
                 flash_attention=flash_attention,
             ),
-            learner_kwargs=dict(peak_lr=6e-4, weight_decay=0.01),
+            learner_kwargs=dict(
+                peak_lr=float(os.environ.get('PEAK_LR', '1.5e-5')),
+                weight_decay=float(os.environ.get('WEIGHT_DECAY', '6e-6'))
+            ),
             max_sequence_length=64,
             train_batch_size=32,
             eval_batch_size=32,
@@ -261,7 +264,7 @@ def get_trainer_kwargs(
     elif model_size == "1B":
         trainer_kwargs = dict(
             model_kwargs=dict(
-                num_layers=16,
+                num_layers=int(os.environ.get('N_LAYERS', 16)),
                 hidden_dim=2048,
                 num_heads=32,
                 num_kv_heads=num_kv_heads,
@@ -270,7 +273,10 @@ def get_trainer_kwargs(
                 shared_lm_head=True,
                 flash_attention=flash_attention,
             ),
-            learner_kwargs=dict(peak_lr=3e-4, weight_decay=0.1),
+            learner_kwargs=dict(
+                peak_lr=float(os.environ.get('PEAK_LR', '1.5e-5')),
+                weight_decay=float(os.environ.get('WEIGHT_DECAY', '6e-6'))
+            ),
             max_sequence_length=max_sequence_length,
             train_batch_size=train_batch_size,
             max_step=max_step,
@@ -295,7 +301,7 @@ def get_trainer_kwargs(
     elif model_size == "3B":
         trainer_kwargs = dict(
             model_kwargs=dict(
-                num_layers=28,
+                num_layers=int(os.environ.get('N_LAYERS', 28)),
                 hidden_dim=3072,
                 num_heads=24,
                 num_kv_heads=num_kv_heads,
@@ -304,7 +310,10 @@ def get_trainer_kwargs(
                 shared_lm_head=True,
                 flash_attention=flash_attention,
             ),
-            learner_kwargs=dict(peak_lr=3e-4, weight_decay=0.1),
+            learner_kwargs=dict(
+                peak_lr=float(os.environ.get('PEAK_LR', '1.5e-5')),
+                weight_decay=float(os.environ.get('WEIGHT_DECAY', '6e-6'))
+            ),
             max_sequence_length=max_sequence_length,
             train_batch_size=train_batch_size,
             max_step=max_step,
@@ -329,7 +338,7 @@ def get_trainer_kwargs(
     elif model_size == "7B":
         trainer_kwargs = dict(
             model_kwargs=dict(
-                num_layers=32,
+                num_layers=int(os.environ.get('N_LAYERS', 32)),
                 hidden_dim=128 * 32,
                 num_heads=32,
                 num_kv_heads=num_kv_heads,
@@ -337,7 +346,10 @@ def get_trainer_kwargs(
                 shared_lm_head=True,
                 flash_attention=flash_attention,
             ),
-            learner_kwargs=dict(peak_lr=3e-4, weight_decay=0.1),
+            learner_kwargs=dict(
+                peak_lr=float(os.environ.get('PEAK_LR', '1.5e-5')),
+                weight_decay=float(os.environ.get('WEIGHT_DECAY', '6e-6'))
+            ),
             max_sequence_length=max_sequence_length,
             train_batch_size=int(len(jax.devices())/4),
             max_step=max_step,
@@ -457,7 +469,7 @@ def get_trainer_kwargs(
     elif model_size == "8B":
         trainer_kwargs = dict(
             model_kwargs=dict(
-                num_layers=32,
+                num_layers=int(os.environ.get('N_LAYERS', 32)),
                 hidden_dim=128 * 32,
                 num_heads=32,
                 num_kv_heads=num_kv_heads,
@@ -466,7 +478,10 @@ def get_trainer_kwargs(
                 shared_lm_head=False,
                 flash_attention=flash_attention,
             ),
-            learner_kwargs=dict(peak_lr=3e-4, weight_decay=0.1),
+            learner_kwargs=dict(
+                peak_lr=float(os.environ.get('PEAK_LR', '1.5e-5')),
+                weight_decay=float(os.environ.get('WEIGHT_DECAY', '6e-6'))
+            ),
             max_sequence_length=max_sequence_length,
             train_batch_size=train_batch_size,
             max_step=max_step,
