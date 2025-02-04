@@ -284,11 +284,18 @@ def flash_attention_implementation(
             key = _repeat_kv_heads(query.shape[2], key)
             value = _repeat_kv_heads(query.shape[2], value)
 
-            # bias_tensor for sequence packing
-            bias_tensor = bias.value() if bias is not None else None
+            causal, segment_ids, explicit_bias = split(
+                bias, CausalAttentionBias, SegmentIdAttentionBias
+            )
 
             return neuron_flash_attention(
-                query, key, value, bias_tensor, causal=True, softmax_scale=softmax_scale)
+                query,
+                key,
+                value,
+                explicit_bias.value(),
+                causal=causal.has_value(),
+                softmax_scale=softmax_scale
+            )
 
         elif backend in ("cpu", "xla"):
             key = _repeat_kv_heads(query.shape[2], key)
