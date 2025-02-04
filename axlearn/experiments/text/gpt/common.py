@@ -673,6 +673,9 @@ def get_trainer_config_fn(
         cfg.max_step = max_step
         cfg.train_dtype = STEP_DTYPE
         cfg.input = input_tf_data.Input.default_config().set(
+            input_dispatcher=InputDispatcher.default_config().set(
+                global_logical_batch_size=train_batch_size,
+            ),
             is_training=True,
             source=train_input_source,
             input_dispatcher=InputDispatcher.default_config().set(
@@ -692,11 +695,34 @@ def get_trainer_config_fn(
                 }
             ),
         )
+        batcher = config_for_function(input_tf_data.per_feed_batch)
+        batcher.set(
+            # Copy values from cfg.input.batcher.
+            **{
+                k: getattr(cfg.input.batcher, k)
+                for k in batcher.keys()
+                if k not in ("fn", "feed_batch_size")
+            },
+            feed_batch_size=16,
+        )
+        cfg.input.batcher = batcher
         cfg.evalers = {}
         for name, evaler_cfg in evalers.items():
-            evaler_cfg.input.input_dispatcher.global_logical_batch_size = (
-                eval_batch_size or train_batch_size
+            evaler_cfg.input.input_dispatcher = InputDispatcher.default_config().set(
+                global_logical_batch_size=train_batch_size
+                if eval_batch_size is None
+                else eval_batch_size
             )
+            eval_batcher = batcher.clone()
+            eval_batcher.set(
+                # Copy values from cfg.input.batcher.
+                **{
+                    k: getattr(evaler_cfg.input.batcher, k)
+                    for k in eval_batcher.keys()
+                    if k not in ("fn", "feed_batch_size")
+                }
+            )
+            evaler_cfg.input.batcher = eval_batcher
             evaler_cfg.set(
                 eval_policy=config_for_function(eval_every_n_steps_policy).set(
                     n=eval_every_n_steps,
