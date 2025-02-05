@@ -10,6 +10,7 @@ The fuji models are set up to imitate LLaMA models:
 * LLaMA 3: https://github.com/meta-llama/llama3
 """
 
+import jax
 import enum
 import functools
 import itertools
@@ -656,7 +657,7 @@ def get_trainer_kwargs(
                                             names_which_can_be_saved="|".join(
                                                 [
                                                     RematRegexSavePatterns.QKV_PROJ.value,
-                                                    RematRegexSavePatterns.LINEAR1_X.value,
+                                                    RematRegexSavePatterns.LINEAR1_X.value if (jax.device_count() > (64 * 8)) else RematRegexSavePatterns.LINEAR1_0.value,
                                                 ]
                                             ),
                                             names_which_can_be_offloaded=None,
