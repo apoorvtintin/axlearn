@@ -104,6 +104,10 @@ class CrossEntropyLossMetrics(BaseLossMetrics):
         live_targets: Optional[Tensor] = input_batch.get("live_targets")
         logits = predict_outputs["logits"]
 
+        # Upcast logits to preserve precision for metrics
+        if logits.dtype in (jnp.bfloat16, jnp.float16):
+            logits = logits.astype(jnp.float32)
+
         if live_targets is None:
             live_targets = target_labels >= 0
         num_targets = live_targets.sum()
