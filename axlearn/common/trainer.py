@@ -583,6 +583,8 @@ class SpmdTrainer(Module):
                             force_run_eval_sets_at_max_step if self.step >= cfg.max_step else None
                         ),
                     )
+                    if self._step > 2:
+                        raise Exception("Done training")
                     self.vlog(3, "Done step %s", self.step)
                     num_steps += 1
                     if num_steps % 100 == 0:
@@ -641,6 +643,8 @@ class SpmdTrainer(Module):
                 built_state.trainer_state,
                 self._trainer_state_specs,
             )
+        import logging
+        logging.info("done creating state")
 
     def _init_with_prebuilt_state(
         self,
