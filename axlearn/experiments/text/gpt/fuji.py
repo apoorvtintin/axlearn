@@ -13,6 +13,7 @@ The fuji models are set up to imitate LLaMA models:
 import enum
 import functools
 import itertools
+import jax
 from typing import Any, List, NamedTuple, Optional, Union
 
 from jax.ad_checkpoint import checkpoint_policies as jax_remat_policies
@@ -596,7 +597,7 @@ def get_trainer_kwargs(
             ),
             learner_kwargs=dict(peak_lr=1.5e-4, weight_decay=0.1),
             max_sequence_length=max_sequence_length,
-            train_batch_size=train_batch_size,
+            train_batch_size=int(len(jax.devices())/4),
             max_step=max_step,
             mesh_shape=mesh_shape_from_axes(fsdp=-1),
             mesh_rules=(
@@ -688,7 +689,7 @@ def get_trainer_kwargs(
                                             names_which_can_be_saved="|".join(
                                                 [
                                                     RematRegexSavePatterns.QKV_PROJ.value,
-                                                    RematRegexSavePatterns.LINEAR1_X.value,
+                                                    RematRegexSavePatterns.LINEAR1_X.value if (jax.device_count() > (64 * 8)) else RematRegexSavePatterns.LINEAR1_0.value,
                                                 ]
                                             ),
                                             names_which_can_be_offloaded=None,
