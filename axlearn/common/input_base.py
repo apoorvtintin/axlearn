@@ -96,6 +96,7 @@ def partition_by_path_rank(
                 ):
                     continue
                 if partition_spec is not PartitionSpec.UNCONSTRAINED:
+                    print("maybe_constrain", path_regex, path, rank, partition_spec)
                     value = with_sharding_constraint(value, partition_spec)
                     logging.log_first_n(
                         logging.INFO,
@@ -246,14 +247,14 @@ class Input(Module):
                 batch,
             )
 
-        if "input_dispatcher" in self.children:
-            global_logical_batch = self.input_dispatcher.physical_to_logical_batch(
-                constrain_batch_axis(global_physical_batch)
-            )
-        else:
-            global_logical_batch = dispatch_input_batch(
-                global_physical_batch, batch_axis_names=batch_axis_names
-            )
+        # if "input_dispatcher" in self.children:
+        #     global_logical_batch = self.input_dispatcher.physical_to_logical_batch(
+        #         constrain_batch_axis(global_physical_batch)
+        #     )
+        # else:
+        #     global_logical_batch = dispatch_input_batch(
+        #         global_physical_batch, batch_axis_names=batch_axis_names
+        #     )
 
         global_logical_batch = constrain_batch_axis(global_logical_batch)
 

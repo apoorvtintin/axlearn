@@ -155,18 +155,15 @@ def with_minibatch_steps(
 
     # Default partitioner for minibatches.
     if not minibatch_partitioner:
-        minibatch_partitioner = (
-            config_for_function(partition_by_path_rank).set(
-                path_rank_to_partition={
+        minibatch_partitioner = partition_by_path_rank(
+            path_rank_to_partition={
                     # Note: the batch axes are different here than in
                     # `cfg.batch_axis_names`,
                     # as we partition sequence dim over `seq`.
                     (None, 1): PartitionSpec(("data", "expert", "fsdp")),
-                    (None, 2): PartitionSpec(("data", "expert", "fsdp"), "seq"),
-                }
-            ),
+                    (None, 2): PartitionSpec(("data", "expert", "fsdp"), "seq")
+            }
         )
-
     def decorator(fn: ForwardFn) -> ForwardFn:
         # We define a positional arg only version of the original function
         # that is passed because jax.value_and_grad does not accept
