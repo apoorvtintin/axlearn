@@ -601,6 +601,8 @@ class SpmdTrainer(Module):
                     )
                     self.vlog(3, "Done step %s", self.step)
                     num_steps += 1
+                    # if num_steps == 7:
+                    #     raise Exception("done checkpoint")
                     if num_steps % 100 == 0:
                         now = time.perf_counter()
                         average_step_time = (now - start_time) / num_steps

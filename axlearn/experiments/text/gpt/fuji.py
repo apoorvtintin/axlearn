@@ -14,9 +14,9 @@ import enum
 import functools
 import itertools
 from typing import Any, List, NamedTuple, Optional, Union
-
+import os
 from jax.ad_checkpoint import checkpoint_policies as jax_remat_policies
-
+import jax
 from axlearn.common import causal_lm, config
 from axlearn.common.attention import (
     BaseStackedTransformerLayer,
@@ -108,6 +108,7 @@ TOTAL_TOKENS = {
     Version.V2: {
         "test": 2 * (1024**4),  # 2T tokens
         "7B": 2 * (1024**4),  # 2T tokens
+        "3B": 2 * (1024**4),  # 2T tokens
         "70B": 2 * (1024**4),  # 2T tokens
     },
     Version.V3: {
@@ -160,14 +161,24 @@ def _generate_trn2_custom_configs(
         A _Trn2CustomConfig object that contains the generated modifications.
     """
     # TRN2 specific model config modifications.
-    trn2_module_modifications = [
-        # Neuron compiler has a module to detect repeating blocks and reuse them during compilation.
-        # So compile time does not grow with the number of layers.
-        ModuleConfigModifier.default_config().set(
-            target_config="model.decoder.transformer",
-            modification=StackedTransformerLayer.default_config(),
-        )
-    ]
+    if int(os.getenv("NEURON_FSDP_REPEATED", 0)) == 0:
+        trn2_module_modifications = [
+            # Neuron compiler has a module to detect repeating blocks and reuse them during compilation.
+            # So compile time does not grow with the number of layers.
+            ModuleConfigModifier.default_config().set(
+                target_config="model.decoder.transformer",
+                modification=StackedTransformerLayer.default_config(),
+            )
+        ]
+    else:
+        trn2_module_modifications = [
+            # Neuron compiler has a module to detect repeating blocks and reuse them during compilation.
+            # So compile time does not grow with the number of layers.
+            # ModuleConfigModifier.default_config().set(
+            #     target_config="model.decoder.transformer",
+            #     modification=StackedTransformerLayer.default_config(),
+            # )
+        ]
     # Grouped QKV is only used in fuji-v3 except in fuji-v2 if model is 70B.
     if version == Version.V3 or (model_size == "70B" and version != Version.V1):
         trn2_module_modifications.append(
@@ -338,7 +349,8 @@ def get_trainer_kwargs(
             ),
             learner_kwargs=dict(peak_lr=3e-4, weight_decay=0.1),
             max_sequence_length=max_sequence_length,
-            train_batch_size=train_batch_size,
+            # train_batch_size=train_batch_size,
+            train_batch_size=int(len(jax.devices()) / 4 * 2),
             max_step=max_step,
             mesh_shape=mesh_shape_from_axes(data=-1, fsdp=8),
             mesh_rules=(
@@ -351,6 +363,7 @@ def get_trainer_kwargs(
                                 # Each TRN2 chip has 4 XLA cores.
                                 mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
                             ),
+                            # GradientAccumulationModifier.default_config().set(grad_acc_steps=4),
                             *trn2_config.module_modifications,
                             *trn2_config.partition_spec_modifications,
                             GradientAccumulationModifier.default_config().set(
@@ -587,7 +600,7 @@ def get_trainer_kwargs(
     elif model_size == "70B":
         trainer_kwargs = dict(
             model_kwargs=dict(
-                num_layers=80,
+                num_layers=int(os.getenv("NUM_LAYERS", 8)),
                 hidden_dim=128 * 64,
                 num_heads=64,
                 # No GQA support in V1 models, so num_kv_heads is the same as num_heads.
@@ -600,7 +613,8 @@ def get_trainer_kwargs(
             ),
             learner_kwargs=dict(peak_lr=1.5e-4, weight_decay=0.1),
             max_sequence_length=max_sequence_length,
-            train_batch_size=train_batch_size,
+            train_batch_size=int(len(jax.devices())/4),
+            # save_every_n_steps=5,
             max_step=max_step,
             mesh_shape=mesh_shape_from_axes(fsdp=-1),
             mesh_rules=(
@@ -681,6 +695,7 @@ def get_trainer_kwargs(
                                 # TP within the chip, FSDP across chips.
                                 # Each TRN2 chip has 4 XLA cores.
                                 mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
+                                # mesh_shape=mesh_shape_from_axes(data=-1, fsdp=128, model=4)
                             ),
                             RematSpecModifier.default_config().set(
                                 remat_policies={
@@ -692,6 +707,7 @@ def get_trainer_kwargs(
                                             names_which_can_be_saved="|".join(
                                                 [
                                                     RematRegexSavePatterns.QKV_PROJ.value,
+                                                    # RematRegexSavePatterns.O_PROJ.value,
                                                     RematRegexSavePatterns.LINEAR1_X.value,
                                                 ]
                                             ),

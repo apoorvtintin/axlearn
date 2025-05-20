@@ -1745,14 +1745,22 @@ def create_device_mesh(
     assert num_devices % num_granules == 0, "Number of devices should divide number of granules."
     num_devices_per_granule = num_devices // num_granules
 
-    # Fallback to a standard mesh if on GPU with incompatible multi-granule mesh.
+    # Fallback to a standard mesh if on GPU or neuron with incompatible multi-granule mesh.
     if (
-        device_platform == "gpu"
+        (device_platform == "gpu" or device_platform == "neuron")
         and isinstance(mesh_shape, MeshShape)
         and mesh_shape[0] % num_granules != 0
     ):
-        logging.warning("Falling back to ICI-only mesh on GPU, performance may be reduced.")
+        logging.warning(f"Falling back to ICI-only mesh on {device_platform}, performance may be reduced.")
         return build_standard_mesh(mesh_shape, devices=devices)
+
+    # # Fallback to a standard mesh if on Neuron
+    # if (
+    #     device_platform == "neuron"
+    #     and isinstance(mesh_shape, MeshShape)
+    # ):
+    #     logging.warning("Falling back to ICI-only mesh on Neuron.")
+    #     return build_standard_mesh(mesh_shape, devices=devices)
 
     # Canonicalize to HybridMeshShape. If DCN mesh is not specified, break the first non-singleton
     # device axis (the least communication intensive) over the number of slices/granules. If all
