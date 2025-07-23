@@ -18,6 +18,7 @@ from absl import logging
 from jax import numpy as jnp
 from jax.experimental import multihost_utils
 from jax.experimental.pjit import pjit
+import hashlib
 
 from axlearn.common import file_system as fs
 from axlearn.common import measurement, utils
@@ -581,10 +582,29 @@ class SpmdTrainer(Module):
 
                 for input_batch in self.input.batches(self._input_iter):
                     self._maybe_record_event(measurement.Event.START_STEP, self._step)
+                    if num_steps < 3:
+                        input_ids = input_batch["input_ids"]
+                        input_hash = hashlib.sha256(input_ids).hexdigest()
+                        target_labels = input_batch["target_labels"]
+                        target_hash = hashlib.sha256(target_labels).hexdigest()
+                        logging.log_first_n(
+                            logging.INFO, "input_batch=%s", 3, (input_batch["input_ids"], input_batch["target_labels"]),
+                        )
+                    else:
+                        input_hash = target_hash = None
+
                     logging.log_first_n(
                         logging.INFO, "input_batch=%s", 3, utils.shapes(input_batch)
                     )
-
+                    logging.log_first_n(
+                        logging.INFO, "input_batch=%s", 3, utils.shapes(input_batch)
+                    )
+                    logging.log_first_n(
+                        logging.INFO, "input_hash=%s", 3, input_hash
+                    )
+                    logging.log_first_n(
+                        logging.INFO, "target_hash=%s", 3, target_hash
+                    )
                     # Stop or start tracing if necessary.
                     stop_trace_step = self._maybe_stop_or_start_tracing(stop_trace_step, output)
 
@@ -1063,12 +1083,12 @@ class SpmdTrainer(Module):
             # Run the compiled function.
             self._trainer_state, outputs = compiled_train_step_fn(self.trainer_state, input_batch)
 
-        if self.step % 100 == 0 or 0 <= self.step <= 5:
-            self._step_log(
-                "loss=%s aux=%s",
-                outputs["loss"],
-                jax.tree.map(lambda x: x.item() if x.ndim == 0 else f"T{x.shape}", outputs["aux"]),
-            )
+        # if self.step % 100 == 0 or 0 <= self.step <= 5:
+        self._step_log(
+            "loss=%s aux=%s",
+            outputs["loss"],
+            jax.tree.map(lambda x: x.item() if x.ndim == 0 else f"T{x.shape}", outputs["aux"]),
+        )
 
         self.summary_writer(self.step, {"loss": outputs["loss"], **outputs["summaries"]})
         # Aggregate summaries across evalers.

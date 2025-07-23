@@ -103,6 +103,7 @@ TOTAL_TOKENS = {
     Version.V1: {
         "test": 1 * (1024**4),  # 1T tokens
         "7B": 1 * (1024**4),  # 1T tokens
+        "3B": 1 * (1024**4),  # 2T tokens
         "70B": int(1.4 * (1024**4)),  # 1.4T tokens
     },
     Version.V2: {
@@ -161,7 +162,8 @@ def _generate_trn2_custom_configs(
         A _Trn2CustomConfig object that contains the generated modifications.
     """
     # TRN2 specific model config modifications.
-    if int(os.getenv("NEURON_FSDP_REPEATED", 0)) == 0:
+    # if int(os.getenv("NEURON_FSDP_REPEATED", 0)) == 0:
+    if False:
         trn2_module_modifications = [
             # Neuron compiler has a module to detect repeating blocks and reuse them during compilation.
             # So compile time does not grow with the number of layers.
@@ -338,21 +340,23 @@ def get_trainer_kwargs(
     elif model_size == "3B":
         trainer_kwargs = dict(
             model_kwargs=dict(
-                num_layers=28,
-                hidden_dim=3072,
-                num_heads=24,
+                num_layers=4,
+                hidden_dim=1024,
+                num_heads=16,
                 num_kv_heads=num_kv_heads,
-                ffn_dim=8192,
+                ffn_dim=4096,
                 rope_theta=rope_theta,
                 shared_lm_head=True,
                 flash_attention=flash_attention,
             ),
-            learner_kwargs=dict(peak_lr=3e-4, weight_decay=0.1),
+            learner_kwargs=dict(peak_lr=1.5e-4, weight_decay=6e-6),
             max_sequence_length=max_sequence_length,
             # train_batch_size=train_batch_size,
-            train_batch_size=int(len(jax.devices()) / 4 * 2),
+            train_batch_size=int(len(jax.devices()) / 4),
             max_step=max_step,
             mesh_shape=mesh_shape_from_axes(data=-1, fsdp=8),
+            save_every_n_steps=100000,
+            # save_every_n_steps=1,
             mesh_rules=(
                 (
                     "neuron-(trn2|trn2n).48xlarge-64",
@@ -366,9 +370,9 @@ def get_trainer_kwargs(
                             # GradientAccumulationModifier.default_config().set(grad_acc_steps=4),
                             *trn2_config.module_modifications,
                             *trn2_config.partition_spec_modifications,
-                            GradientAccumulationModifier.default_config().set(
-                                grad_acc_steps=4,
-                            ),
+                            # GradientAccumulationModifier.default_config().set(
+                            #     grad_acc_steps=4,
+                            # ),
                         ],
                     ),
                 ),
@@ -377,7 +381,7 @@ def get_trainer_kwargs(
     elif model_size == "7B":
         trainer_kwargs = dict(
             model_kwargs=dict(
-                num_layers=32,
+                num_layers=int(os.getenv("NUM_LAYERS", 8)),
                 hidden_dim=128 * 32,
                 num_heads=32,
                 num_kv_heads=num_kv_heads,
@@ -387,7 +391,7 @@ def get_trainer_kwargs(
             ),
             learner_kwargs=dict(peak_lr=3e-4, weight_decay=0.1),
             max_sequence_length=max_sequence_length,
-            train_batch_size=train_batch_size,
+            train_batch_size=int(len(jax.devices())/int(os.getenv("TP_DEGREE", 4))),
             max_step=max_step,
             mesh_shape=mesh_shape_from_axes(data=-1, fsdp=8),
             mesh_rules=(
@@ -494,6 +498,7 @@ def get_trainer_kwargs(
                             MeshShapeModifier.default_config().set(
                                 # TP within the chip, FSDP across chips.
                                 # Each TRN2 chip has 4 XLA cores.
+                                # mesh_shape=mesh_shape_from_axes(fsdp=-1)
                                 mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
                             ),
                             *trn2_config.module_modifications,
@@ -695,6 +700,8 @@ def get_trainer_kwargs(
                                 # TP within the chip, FSDP across chips.
                                 # Each TRN2 chip has 4 XLA cores.
                                 mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
+                                # mesh_shape=mesh_shape_from_axes(fsdp=-1, model=8)
+                                # mesh_shape=mesh_shape_from_axes(data=-1, fsdp=128, model=4)
                                 # mesh_shape=mesh_shape_from_axes(data=-1, fsdp=128, model=4)
                             ),
                             RematSpecModifier.default_config().set(

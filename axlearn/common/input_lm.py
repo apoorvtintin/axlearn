@@ -12,7 +12,7 @@ from typing import Any, Literal, Optional
 import seqio
 import tensorflow as tf
 from absl import logging
-
+import os
 from axlearn.common import input_tf_data
 from axlearn.common.config import InstantiableConfig, config_for_function, maybe_set_config
 from axlearn.common.input_text import num_bytes, tokenize, tokenize_example
@@ -20,7 +20,9 @@ from axlearn.common.input_tf_data import rekey
 
 # Value of "target_labels" which will be ignored in seq2seq processing.
 SEQ2SEQ_IGNORE_TARGET_LABEL = -1
-
+seed = int(os.getenv("DATA_SEED", 8))
+seed = int(seed) if seed is not None else None
+tf.random.set_seed(seed)
 
 class InputDataType(Enum):
     """Represents input data types for decoder-only language model training.

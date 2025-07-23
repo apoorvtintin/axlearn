@@ -1745,9 +1745,9 @@ def create_device_mesh(
     assert num_devices % num_granules == 0, "Number of devices should divide number of granules."
     num_devices_per_granule = num_devices // num_granules
 
-    # Fallback to a standard mesh if on GPU or neuron with incompatible multi-granule mesh.
+    # Fallback to a standard mesh with incompatible multi-granule mesh if not on TPU.
     if (
-        (device_platform == "gpu" or device_platform == "neuron")
+        device_platform != "tpu"
         and isinstance(mesh_shape, MeshShape)
         and mesh_shape[0] % num_granules != 0
     ):
